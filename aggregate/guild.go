@@ -2,6 +2,7 @@ package aggregate
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -38,7 +39,7 @@ func CreateGuild(guildName string, guildOwner *entity.Player) (Guild, error) {
 		return Guild{}, ErrInvalidGuildName
 	}
 
-	if guildOwner.CurrentGuild != nil {
+	if guildOwner.GetCurrentGuild() != uuid.Nil {
 		return Guild{}, ErrPlayerIsAlreadyGuildMember
 	}
 
@@ -50,13 +51,13 @@ func CreateGuild(guildName string, guildOwner *entity.Player) (Guild, error) {
 		name:      guildName,
 		createdAt: time.Now(),
 		manageBy:  guildOwner,
-		vault:     initVault(),
-		treasure:  initTreasure(),
+		vault:     entity.NewVault(),
+		treasure:  entity.NewTreasure(),
 		players:   players,
 		invites:   make([]*entity.Invite, 0, MaxInvites),
 	}
 
-	guildOwner.CurrentGuild = &guild.GuildID
+	guildOwner.UpdateCurrentGuild(&guild.GuildID)
 
 	return guild, nil
 }
@@ -69,13 +70,13 @@ func (g *Guild) InvitePlayer(sender *entity.Player, player *entity.Player) (enti
 
 	// Garante que o Player convidado não pertence a nenhuma outra guild.
 	// TODO Vale extrair para uma função separada?
-	if player.CurrentGuild != nil {
+	if player.GetCurrentGuild() != uuid.Nil {
 		return entity.Invite{}, ErrPlayerIsAlreadyGuildMember
 	}
 
 	// Se o GM enviar o convite, automaticamente o convidado fará parte da guild.
 	// TODO Vale extrair para uma função separada?
-	if sender.CurrentGuild.ID() == g.manageBy.ID() {
+	if sender.GetCurrentGuild() == g.manageBy.ID() {
 		g.AddPlayer(player)
 	}
 
@@ -96,31 +97,43 @@ func (g *Guild) InvitePlayer(sender *entity.Player, player *entity.Player) (enti
 // Estudar forma segura de fazer essa manipulação levando em consideração concorrência
 func (g *Guild) AddPlayer(player *entity.Player) (*Guild, error) {
 
-	if player.CurrentGuild.ID() != uuid.Nil {
+	if player.GetCurrentGuild() != uuid.Nil {
 		return nil, ErrPlayerIsAlreadyGuildMember
 	}
 
-	player.CurrentGuild = &g.GuildID
+	player.UpdateCurrentGuild(&g.GuildID)
 	g.players = append(g.players, player)
 
 	return g, nil
 }
 
-func initVault() *entity.Vault {
-	vault := entity.Vault{
-		VaultID:    valueobjects.NewVaultID(uuid.New()),
-		Items:      []*entity.Item{},
-		GoldAmount: 0,
+func (g *Guild) RemovePlayer(player *entity.Player) (*Guild, error) {
+	if player.GetCurrentGuild() == g.ID() {
+		return g, nil
 	}
-
-	return &vault
+	return nil, ErrInvalidOperation
 }
 
-func initTreasure() *entity.Treasure {
-	vault := entity.Treasure{
-		TreasureID: valueobjects.NewTreasureID(uuid.New()),
-		CashAmount: 0,
+func (g *Guild) LeaveGuild(player *entity.Player) (*Guild, error) {
+	if player.GetCurrentGuild() == g.ID() {
+		player.UpdateCurrentGuild(nil)
+		return g, nil
 	}
+	return nil, ErrInvalidOperation
+}
 
-	return &vault
+// TODO - Melhorar -- better error handler
+func (g Guild) AddItem(i *entity.Item) error {
+	g.vault.Items = append(g.vault.Items, i)
+	return nil
+}
+
+// TODO - Melhorar -- better error handler
+func (g Guild) AddGold(gold int) error {
+	g.vault.GoldAmount += gold
+	return nil
+}
+
+func (g Guild) Print() {
+	fmt.Printf("Guild ID: %v \n Guild Name: %v \n Guild Master: %v \n Guild Vault ID: %v \n Members Size: %d \n Items Stored: %d \n", g.GuildID.ID(), g.name, g.manageBy, g.vault.VaultID.ID(), len(g.players), len(g.vault.Items))
 }

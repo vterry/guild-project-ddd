@@ -7,13 +7,7 @@ import (
 	"github.com/vterry/guild-project-ddd/valueobjects"
 )
 
-type InviteStatus string
-
-const (
-	Pending  InviteStatus = "PENDING"
-	Accepted InviteStatus = "ACCEPTED"
-	Rejected InviteStatus = "REJECTED"
-)
+type InviteStatus valueobjects.Status
 
 type Invite struct {
 	valueobjects.InviteID
@@ -30,7 +24,7 @@ func NewInvite(invited valueobjects.PlayerID, sender valueobjects.PlayerID, guil
 		playerID:  invited,
 		invitedBy: sender,
 		guildID:   guild,
-		status:    Pending,
+		status:    InviteStatus(valueobjects.Pending),
 		createdAt: time.Now(),
 	}
 }
