@@ -43,3 +43,27 @@ func (i *Invite) UpdateStatus(status InviteStatus) InviteStatus {
 	i.status = status
 	return i.status
 }
+
+func (i *Invite) reject() error {
+	if i.status != InviteStatus(common.Pending) {
+		return ErrInvalidOperation
+	}
+	i.status = InviteStatus(common.Rejected)
+	return nil
+}
+
+func (i *Invite) cancel() error {
+	if i.status != InviteStatus(common.Pending) {
+		return ErrInvalidOperation
+	}
+	i.status = InviteStatus(common.Canceled)
+	return nil
+}
+
+func (i *Invite) approve() error {
+	if i.status != InviteStatus(common.Pending) {
+		return ErrInvalidOperation
+	}
+	i.status = InviteStatus(common.Approved)
+	return nil
+}

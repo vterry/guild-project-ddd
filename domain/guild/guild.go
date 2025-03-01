@@ -2,7 +2,8 @@ package guild
 
 import (
 	"errors"
-	"fmt"
+	"slices"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -31,44 +32,35 @@ type Guild struct {
 	vault     *vault.Vault
 	treasure  *treasure.Treasure
 	players   []*player.Player
-	invites   []*Invite
+	invites   []Invite
+	sync.Mutex
 }
 
-// TODO Garantir na camada de aplicação que Players não podem criar guilds no nome de outros.
-func CreateGuild(guildName string, guildOwner *player.Player) (Guild, error) {
+func CreateGuild(guildName string, guildOwner *player.Player) (*Guild, error) {
 
-	if len(guildName) < 4 && len(guildName) > 15 {
-		return Guild{}, ErrInvalidGuildName
+	if len(guildName) < 4 || len(guildName) > 15 {
+		return nil, ErrInvalidGuildName
 	}
 
 	if guildOwner.GetCurrentGuild() != uuid.Nil {
-		return Guild{}, ErrPlayerIsAlreadyGuildMember
+		return nil, ErrPlayerIsAlreadyGuildMember
 	}
 
 	players := make([]*player.Player, 0, MaxPlayers)
 	players = append(players, guildOwner)
 
-	guild := Guild{
-		GuildID:   valueobjects.NewGuildID(uuid.New()),
-		name:      guildName,
-		createdAt: time.Now(),
-		manageBy:  guildOwner,
-		vault:     vault.NewVault(),
-		treasure:  treasure.NewTreasure(),
-		players:   players,
-		invites:   make([]*Invite, 0, MaxInvites),
-	}
-
+	guild := initializeGuild(guildName, guildOwner, players)
 	guildOwner.UpdateCurrentGuild(guild.GuildID.ID())
 
 	return guild, nil
 }
 
-//TODO - Destruir guild? Implementa aqui?
-
 func (g *Guild) InvitePlayer(sender *player.Player, player *player.Player) (Invite, error) {
 
-	if len(g.invites)+1 > cap(g.invites) && len(g.players)+1 > cap(g.players) {
+	g.Lock()
+	defer g.Unlock()
+
+	if len(g.invites)+1 > cap(g.invites) || len(g.players)+1 > cap(g.players) {
 		return Invite{}, ErrNoInviteAvailable
 	}
 
@@ -84,14 +76,72 @@ func (g *Guild) InvitePlayer(sender *player.Player, player *player.Player) (Invi
 		g.AddPlayer(player)
 	}
 
-	// Valida se o jogador já não possui um convite pendente
-	for _, invite := range g.invites {
-		if invite.GetPlayerID() == player.PlayerID {
-			return *invite, ErrAlreadyInvited
-		}
+	if g.isInvitedPlayer(player) {
+		return Invite{}, ErrAlreadyInvited
 	}
 
 	invite := NewInvite(player.PlayerID, sender.PlayerID, g.GuildID)
+	g.invites = append(g.invites, invite)
+
+	return invite, nil
+}
+
+// TODO - Jogadores convidados podem recusar o convite
+func (g *Guild) RejectInvite(invite Invite) (Invite, error) {
+	g.Lock()
+	defer g.Unlock()
+
+	inviteIndex := slices.IndexFunc(g.invites, func(i Invite) bool {
+		return i.InviteID.Equals(invite.InviteID)
+	})
+
+	if inviteIndex == -1 {
+		return Invite{}, ErrInvalidOperation
+	}
+
+	g.invites[inviteIndex].reject()
+
+	g.invites = append(g.invites[:inviteIndex], g.invites[inviteIndex+1:]...)
+
+	return invite, nil
+}
+
+// TODO - Garantir que somente GM ou Commanders podem cancelar convites
+func (g *Guild) CancelInvite(invite Invite) (Invite, error) {
+	g.Lock()
+	defer g.Unlock()
+
+	inviteIndex := slices.IndexFunc(g.invites, func(i Invite) bool {
+		return i.InviteID.Equals(invite.InviteID)
+	})
+
+	if inviteIndex == -1 {
+		return Invite{}, ErrInvalidOperation
+	}
+
+	g.invites[inviteIndex].cancel()
+
+	g.invites = append(g.invites[:inviteIndex], g.invites[inviteIndex+1:]...)
+
+	return invite, nil
+}
+
+func (g *Guild) ApproveInvite(invite Invite) (Invite, error) {
+	g.Lock()
+	defer g.Unlock()
+
+	inviteIndex := slices.IndexFunc(g.invites, func(i Invite) bool {
+		return i.InviteID.Equals(invite.InviteID)
+	})
+
+	if inviteIndex == -1 {
+		return Invite{}, ErrInvalidOperation
+	}
+
+	g.invites[inviteIndex].approve()
+
+	g.invites = append(g.invites[:inviteIndex], g.invites[inviteIndex+1:]...)
+
 	return invite, nil
 }
 
@@ -100,6 +150,8 @@ func (g *Guild) InvitePlayer(sender *player.Player, player *player.Player) (Invi
 // Garantir que o player adicionado tera o campo CurrentGuild atualizado
 // Estudar forma segura de fazer essa manipulação levando em consideração concorrência
 func (g *Guild) AddPlayer(player *player.Player) (*Guild, error) {
+	g.Lock()
+	defer g.Unlock()
 
 	if player.GetCurrentGuild() != uuid.Nil {
 		return nil, ErrPlayerIsAlreadyGuildMember
@@ -111,21 +163,59 @@ func (g *Guild) AddPlayer(player *player.Player) (*Guild, error) {
 	return g, nil
 }
 
+// TODO - Garantir que somente GM ou Commanders podem remover jogadores
 func (g *Guild) RemovePlayer(player *player.Player) (*Guild, error) {
+	g.Lock()
+	defer g.Unlock()
+
 	if player.GetCurrentGuild() == g.ID() {
-		return g, nil
+		return g, ErrInvalidOperation
 	}
+
+	playerIndex := slices.Index(g.players, player)
+	if playerIndex == -1 {
+		return nil, ErrInvalidOperation
+	}
+
+	g.players = append(g.players[:playerIndex], g.players[playerIndex+1:]...)
 	return nil, ErrInvalidOperation
 }
 
 func (g *Guild) LeaveGuild(player *player.Player) (*Guild, error) {
+	g.Lock()
+	defer g.Unlock()
+
 	if player.GetCurrentGuild() == g.ID() {
-		player.UpdateCurrentGuild(uuid.Nil)
-		return g, nil
+		return g, ErrInvalidOperation
 	}
+
+	playerIndex := slices.Index(g.players, player)
+	if playerIndex == -1 {
+		return nil, ErrInvalidOperation
+	}
+
+	g.players = append(g.players[:playerIndex], g.players[playerIndex+1:]...)
 	return nil, ErrInvalidOperation
 }
 
-func (g Guild) Print() {
-	fmt.Printf("Guild ID: %v \n Guild Name: %v \n Guild Master: %v \n Guild Vault ID: %v \n Members Size: %d \n Items Stored: %d \n", g.GuildID.ID(), g.name, g.manageBy, g.vault.VaultID, len(g.players), len(g.vault.Items))
+func (g *Guild) isInvitedPlayer(player *player.Player) bool {
+	for _, invite := range g.invites {
+		if invite.GetPlayerID() == player.PlayerID {
+			return true
+		}
+	}
+	return false
+}
+
+func initializeGuild(guildName string, guildOwner *player.Player, players []*player.Player) *Guild {
+	return &Guild{
+		GuildID:   valueobjects.NewGuildID(uuid.New()),
+		name:      guildName,
+		createdAt: time.Now(),
+		manageBy:  guildOwner,
+		vault:     vault.NewVault(),
+		treasure:  treasure.NewTreasure(),
+		players:   players,
+		invites:   make([]Invite, 0, MaxInvites),
+	}
 }
