@@ -86,7 +86,7 @@ func TestRetriveItem(t *testing.T) {
 
 	item1 := item.PickRandomItem()
 	item2 := item.PickRandomItem()
-	// item3 := item.PickRandomItem()
+	item3 := item.PickRandomItem()
 
 	fillPlayerInventory(regPlayer, item1, 2)
 	fillPlayerInventory(maxInvPlayer, item2, 10)
@@ -114,19 +114,20 @@ func TestRetriveItem(t *testing.T) {
 		assert.Equal(t, 0, len(vault.Items))
 	})
 
-	// t.Run("Retrieve unexisting item from vault", func(t *testing.T) {
-	// 	var vaultError *VaultError
+	t.Run("Retrieve unexisting item from vault", func(t *testing.T) {
+		var vaultErr *VaultError
 
-	// 	vault.AddItem(item1, regPlayer)
-	// 	vaultSize := len(vault.Items)
+		vault.AddItem(item1, regPlayer)
+		vaultSize := len(vault.Items)
 
-	// 	err := vault.RetriveItem(item.PickRandomItem(), regPlayer)
-	// 	assert.Error(t, vault.RetriveItem(item3, regPlayer))
+		err := vault.RetriveItem(item.PickRandomItem(), regPlayer)
+		assert.Error(t, vault.RetriveItem(item3, regPlayer))
 
-	// 	assert.NoError(t, err, &vaultError)
-	// 	assert.Contains(t, ErrItemNotFound.Error(), vaultError.Error())
-	// 	assert.Equal(t, vaultSize, len(vault.Items))
-	// })
+		assert.ErrorAs(t, err, &vaultErr)
+		assert.Contains(t, vaultErr.Error(), ErrItemNotFound.Error())
+		assert.Equal(t, vaultSize, len(vault.Items))
+
+	})
 
 	t.Run("Player retriving item from vault with no space left in inventory", func(t *testing.T) {
 		var vaultError *VaultError

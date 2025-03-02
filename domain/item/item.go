@@ -3,6 +3,7 @@ package item
 import (
 	"math/rand"
 
+	"github.com/google/uuid"
 	"github.com/vterry/guild-project-ddd/domain/item/valueobjects"
 )
 
@@ -25,6 +26,7 @@ func (i *Item) Name() string {
 
 func initializeItem(name string) *Item {
 	return &Item{
-		name: name,
+		ItemID: valueobjects.NewItemID(uuid.New()),
+		name:   name,
 	}
 }

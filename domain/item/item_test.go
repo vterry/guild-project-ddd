@@ -40,7 +40,7 @@ func TestInitializeItem(t *testing.T) {
 }
 func TestItemID(t *testing.T) {
 	item := initializeItem("Sword")
-	if item.ID() != uuid.Nil {
+	if item.ID() == uuid.Nil {
 		t.Errorf("Expected item ID to be not empty")
 	}
 }
