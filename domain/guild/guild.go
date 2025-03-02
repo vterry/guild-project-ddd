@@ -20,8 +20,8 @@ var (
 	ErrInvalidOperation           = errors.New("invalid operation")
 	ErrNoInviteAvailable          = errors.New("there are no room for new invitations")
 	ErrGuildAlreadyFull           = errors.New("guild is already full")
-	MaxPlayers                    = 50
-	MaxInvites                    = 50
+	MAX_PLAYERS                   = 50
+	MAX_INVITES                   = 50
 )
 
 type Guild struct {
@@ -32,7 +32,7 @@ type Guild struct {
 	vault     *vault.Vault
 	treasure  *treasure.Treasure
 	players   []*player.Player
-	invites   []Invite
+	invites   []*Invite
 	sync.Mutex
 }
 
@@ -46,7 +46,7 @@ func CreateGuild(guildName string, guildOwner *player.Player) (*Guild, error) {
 		return nil, ErrPlayerIsAlreadyGuildMember
 	}
 
-	players := make([]*player.Player, 0, MaxPlayers)
+	players := make([]*player.Player, 0, MAX_PLAYERS)
 	players = append(players, guildOwner)
 
 	guild := initializeGuild(guildName, guildOwner, players)
@@ -55,19 +55,19 @@ func CreateGuild(guildName string, guildOwner *player.Player) (*Guild, error) {
 	return guild, nil
 }
 
-func (g *Guild) InvitePlayer(sender *player.Player, player *player.Player) (Invite, error) {
+func (g *Guild) InvitePlayer(sender *player.Player, player *player.Player) (*Invite, error) {
 
 	g.Lock()
 	defer g.Unlock()
 
 	if len(g.invites)+1 > cap(g.invites) || len(g.players)+1 > cap(g.players) {
-		return Invite{}, ErrNoInviteAvailable
+		return nil, ErrNoInviteAvailable
 	}
 
 	// Garante que o Player convidado não pertence a nenhuma outra guild.
 	// TODO Vale extrair para uma função separada?
 	if player.GetCurrentGuild() != uuid.Nil {
-		return Invite{}, ErrPlayerIsAlreadyGuildMember
+		return nil, ErrPlayerIsAlreadyGuildMember
 	}
 
 	// Se o GM enviar o convite, automaticamente o convidado fará parte da guild.
@@ -77,7 +77,7 @@ func (g *Guild) InvitePlayer(sender *player.Player, player *player.Player) (Invi
 	}
 
 	if g.isInvitedPlayer(player) {
-		return Invite{}, ErrAlreadyInvited
+		return nil, ErrAlreadyInvited
 	}
 
 	invite := NewInvite(player.PlayerID, sender.PlayerID, g.GuildID)
@@ -87,16 +87,16 @@ func (g *Guild) InvitePlayer(sender *player.Player, player *player.Player) (Invi
 }
 
 // TODO - Jogadores convidados podem recusar o convite
-func (g *Guild) RejectInvite(invite Invite) (Invite, error) {
+func (g *Guild) RejectInvite(invite *Invite) (*Invite, error) {
 	g.Lock()
 	defer g.Unlock()
 
-	inviteIndex := slices.IndexFunc(g.invites, func(i Invite) bool {
+	inviteIndex := slices.IndexFunc(g.invites, func(i *Invite) bool {
 		return i.InviteID.Equals(invite.InviteID)
 	})
 
 	if inviteIndex == -1 {
-		return Invite{}, ErrInvalidOperation
+		return nil, ErrInvalidOperation
 	}
 
 	g.invites[inviteIndex].reject()
@@ -107,16 +107,16 @@ func (g *Guild) RejectInvite(invite Invite) (Invite, error) {
 }
 
 // TODO - Garantir que somente GM ou Commanders podem cancelar convites
-func (g *Guild) CancelInvite(invite Invite) (Invite, error) {
+func (g *Guild) CancelInvite(invite *Invite) (*Invite, error) {
 	g.Lock()
 	defer g.Unlock()
 
-	inviteIndex := slices.IndexFunc(g.invites, func(i Invite) bool {
+	inviteIndex := slices.IndexFunc(g.invites, func(i *Invite) bool {
 		return i.InviteID.Equals(invite.InviteID)
 	})
 
 	if inviteIndex == -1 {
-		return Invite{}, ErrInvalidOperation
+		return nil, ErrInvalidOperation
 	}
 
 	g.invites[inviteIndex].cancel()
@@ -126,16 +126,16 @@ func (g *Guild) CancelInvite(invite Invite) (Invite, error) {
 	return invite, nil
 }
 
-func (g *Guild) ApproveInvite(invite Invite) (Invite, error) {
+func (g *Guild) ApproveInvite(invite *Invite) (*Invite, error) {
 	g.Lock()
 	defer g.Unlock()
 
-	inviteIndex := slices.IndexFunc(g.invites, func(i Invite) bool {
+	inviteIndex := slices.IndexFunc(g.invites, func(i *Invite) bool {
 		return i.InviteID.Equals(invite.InviteID)
 	})
 
 	if inviteIndex == -1 {
-		return Invite{}, ErrInvalidOperation
+		return nil, ErrInvalidOperation
 	}
 
 	g.invites[inviteIndex].approve()
@@ -216,6 +216,6 @@ func initializeGuild(guildName string, guildOwner *player.Player, players []*pla
 		vault:     vault.NewVault(),
 		treasure:  treasure.NewTreasure(),
 		players:   players,
-		invites:   make([]Invite, 0, MaxInvites),
+		invites:   make([]*Invite, 0, MAX_INVITES),
 	}
 }

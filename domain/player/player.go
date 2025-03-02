@@ -13,6 +13,8 @@ import (
 var (
 	ErrInvalidNickname = errors.New("nickname must by between 4 and 15 characters")
 	ErrNotEnoughSpace  = errors.New("player has no space for more items")
+	ErrItemNotFound    = errors.New("item not found in player inventory")
+	ErrEmptyInventory  = errors.New("player has no items")
 	MAX_ITEMS          = 10
 )
 
@@ -81,15 +83,23 @@ func (p *Player) PickItem(i *item.Item) error {
 	return nil
 }
 
-func (p *Player) RetrieItem(i *item.Item) {
+func (p *Player) RetriveItem(i *item.Item) error {
 	p.Lock()
 	defer p.Unlock()
+
+	if len(p.items) == 0 {
+		return ErrEmptyInventory
+	}
 
 	for index, item := range p.items {
 		if item == i {
 			p.items = append(p.items[:index], p.items[index+1:]...)
+			break
+		} else {
+			return ErrItemNotFound
 		}
 	}
+	return nil
 }
 
 func isValidNickname(nickname string) bool {
@@ -101,7 +111,7 @@ func initializePlayer(nickname string, class common.Class) *Player {
 		PlayerID:     valueobjects.NewPlayerID(uuid.New()),
 		nickname:     nickname,
 		class:        class,
-		items:        make([]*item.Item, MAX_ITEMS),
+		items:        make([]*item.Item, 0, MAX_ITEMS),
 		gold:         new(int),
 		cash:         new(int),
 		currentGuild: uuid.Nil,

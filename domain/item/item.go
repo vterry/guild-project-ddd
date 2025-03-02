@@ -12,15 +12,19 @@ var (
 
 type Item struct {
 	valueobjects.ItemID
-	Name string
+	name string
 }
 
-func (i *Item) GenerateRandomItem() *Item {
+func PickRandomItem() *Item {
 	return initializeItem(ITEMS[rand.Intn(10)])
+}
+
+func (i *Item) Name() string {
+	return i.name
 }
 
 func initializeItem(name string) *Item {
 	return &Item{
-		Name: name,
+		name: name,
 	}
 }

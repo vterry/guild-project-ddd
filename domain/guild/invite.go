@@ -20,8 +20,8 @@ type Invite struct {
 	createdAt time.Time
 }
 
-func NewInvite(invited player.PlayerID, sender player.PlayerID, guild valueobjects.GuildID) Invite {
-	return Invite{
+func NewInvite(invited player.PlayerID, sender player.PlayerID, guild valueobjects.GuildID) *Invite {
+	return &Invite{
 		InviteID:  valueobjects.NewInviteID(uuid.New()),
 		playerID:  invited,
 		invitedBy: sender,
