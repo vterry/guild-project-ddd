@@ -49,7 +49,7 @@ func (v *Vault) RetriveItem(i *item.Item, p *player.Player) error {
 	}
 
 	for index, item := range v.Items {
-		if item.ID() == i.ID() {
+		if item.Equals(i.ItemID) {
 			if err := p.PickItem(i); err != nil {
 				return NewVaultError(ErrInvalidOperation, err)
 			}
@@ -73,7 +73,7 @@ func (v *Vault) AddGold(goldAmount int, p *player.Player) error {
 	}
 
 	v.GoldAmount += goldAmount
-	p.UpdateGold(p.GetCurrentGold() - goldAmount)
+	p.UpdateGold(-goldAmount)
 
 	return nil
 }
@@ -91,7 +91,7 @@ func (v *Vault) GoldWithdraw(goldAmount int, p *player.Player) error {
 	}
 
 	v.GoldAmount -= goldAmount
-	p.UpdateGold(p.GetCurrentGold() + goldAmount)
+	p.UpdateGold(goldAmount)
 
 	return nil
 }

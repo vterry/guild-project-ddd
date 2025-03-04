@@ -6,9 +6,9 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/vterry/guild-project-ddd/domain/common"
 	"github.com/vterry/guild-project-ddd/domain/item"
 	"github.com/vterry/guild-project-ddd/domain/player"
+	"github.com/vterry/guild-project-ddd/domain/player/valueobjects"
 )
 
 var (
@@ -36,7 +36,7 @@ func TestInicializeVault(t *testing.T) {
 }
 
 func TestVaultID(t *testing.T) {
-	vault := NewVault()
+	vault := getVault()
 	if vault == nil {
 		t.Error("Error initializing vault")
 		return
@@ -49,9 +49,9 @@ func TestVaultID(t *testing.T) {
 
 func TestAddItem(t *testing.T) {
 	t.Cleanup(resetVault)
-	vault := NewVault()
+	vault := getVault()
 
-	player, _ := player.NewPlayer("Player 1", common.Warrior)
+	player, _ := player.NewPlayer("Player 1", valueobjects.Warrior)
 	item1 := item.PickRandomItem()
 	item2 := item.PickRandomItem()
 	player.PickItem(item1)
@@ -79,10 +79,10 @@ func TestAddItem(t *testing.T) {
 
 func TestRetriveItem(t *testing.T) {
 	t.Cleanup(resetVault)
-	vault := NewVault()
+	vault := getVault()
 
-	regPlayer, _ := player.NewPlayer("RegularPlayer", common.Ranger)
-	maxInvPlayer, _ := player.NewPlayer("MaxInvPlayer", common.Warrior)
+	regPlayer, _ := player.NewPlayer("RegularPlayer", valueobjects.Ranger)
+	maxInvPlayer, _ := player.NewPlayer("MaxInvPlayer", valueobjects.Warrior)
 
 	item1 := item.PickRandomItem()
 	item2 := item.PickRandomItem()
@@ -144,8 +144,8 @@ func TestRetriveItem(t *testing.T) {
 
 func TestAddGold(t *testing.T) {
 	t.Cleanup(resetVault)
-	vault := NewVault()
-	player, _ := player.NewPlayer("Player 1", common.Ranger)
+	vault := getVault()
+	player, _ := player.NewPlayer("Player 1", valueobjects.Ranger)
 
 	t.Run("Deposit negative gold amount", func(t *testing.T) {
 		var vaultError *VaultError
@@ -174,8 +174,8 @@ func TestAddGold(t *testing.T) {
 
 func TestGoldWithdraw(t *testing.T) {
 	t.Cleanup(resetVault)
-	vault := NewVault()
-	player, _ := player.NewPlayer("Player 1", common.Ranger)
+	vault := getVault()
+	player, _ := player.NewPlayer("Player 1", valueobjects.Ranger)
 
 	t.Run("Withdraw negative value", func(t *testing.T) {
 		var vaultError *VaultError
@@ -196,10 +196,13 @@ func TestGoldWithdraw(t *testing.T) {
 	t.Run("Withdraw correct value from vault", func(t *testing.T) {
 		player.UpdateGold(1000)
 		vault.AddGold(500, player)
+		assert.Equal(t, 500, player.GetCurrentGold())
+
 		err := vault.GoldWithdraw(500, player)
+
 		assert.NoError(t, err)
 		assert.Equal(t, vault.GoldAmount, 0)
-		assert.Equal(t, player.GetCurrentGold(), 1000)
+		assert.Equal(t, 1000, player.GetCurrentGold())
 	})
 }
 

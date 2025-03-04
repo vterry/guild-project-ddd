@@ -1,8 +1,6 @@
 package guild
 
 import (
-	"errors"
-	"slices"
 	"sync"
 	"time"
 
@@ -13,15 +11,9 @@ import (
 	"github.com/vterry/guild-project-ddd/domain/vault"
 )
 
-var (
-	ErrInvalidGuildName           = errors.New("guild name must by between 4 and 15 characters")
-	ErrPlayerIsAlreadyGuildMember = errors.New("the is already member of a Guild")
-	ErrAlreadyInvited             = errors.New("this player has already been invited")
-	ErrInvalidOperation           = errors.New("invalid operation")
-	ErrNoInviteAvailable          = errors.New("there are no room for new invitations")
-	ErrGuildAlreadyFull           = errors.New("guild is already full")
-	MAX_PLAYERS                   = 50
-	MAX_INVITES                   = 50
+const (
+	MAX_PLAYERS = 50
+	MAX_INVITES = 50
 )
 
 type Guild struct {
@@ -31,23 +23,27 @@ type Guild struct {
 	manageBy  *player.Player
 	vault     *vault.Vault
 	treasure  *treasure.Treasure
-	players   []*player.Player
-	invites   []*Invite
+	players   map[uuid.UUID]*player.Player
+	invites   map[uuid.UUID]*Invite
 	sync.Mutex
 }
 
 func CreateGuild(guildName string, guildOwner *player.Player) (*Guild, error) {
 
 	if len(guildName) < 4 || len(guildName) > 15 {
-		return nil, ErrInvalidGuildName
+		return nil, NewGuildError(ErrInvalidGuildName, nil)
+	}
+
+	if guildOwner == nil {
+		return nil, NewGuildError(ErrMustInformGuidOwner, nil)
 	}
 
 	if guildOwner.GetCurrentGuild() != uuid.Nil {
-		return nil, ErrPlayerIsAlreadyGuildMember
+		return nil, NewGuildError(ErrAnotherGuildMember, nil)
 	}
 
-	players := make([]*player.Player, 0, MAX_PLAYERS)
-	players = append(players, guildOwner)
+	players := make(map[uuid.UUID]*player.Player, MAX_PLAYERS)
+	players[guildOwner.ID()] = guildOwner
 
 	guild := initializeGuild(guildName, guildOwner, players)
 	guildOwner.UpdateCurrentGuild(guild.GuildID.ID())
@@ -55,33 +51,46 @@ func CreateGuild(guildName string, guildOwner *player.Player) (*Guild, error) {
 	return guild, nil
 }
 
-func (g *Guild) InvitePlayer(sender *player.Player, player *player.Player) (*Invite, error) {
+func (g *Guild) InvitePlayer(sender *player.Player, guest *player.Player) (*Invite, error) {
 
 	g.Lock()
 	defer g.Unlock()
 
-	if len(g.invites)+1 > cap(g.invites) || len(g.players)+1 > cap(g.players) {
-		return nil, ErrNoInviteAvailable
+	if len(g.invites)+1 >= MAX_INVITES || len(g.players)+1 > MAX_PLAYERS {
+		return nil, NewGuildError(ErrNoInviteAvailable, nil)
+	}
+
+	//Check if sender is a guild member
+	if _, isMember := g.players[sender.ID()]; !isMember {
+		return nil, NewGuildError(ErrCannotInvite, nil)
+	}
+
+	//Check if guest is a guild member
+	if _, isMember := g.players[guest.ID()]; isMember {
+		return nil, NewGuildError(ErrPlayerIsAlreadyGuildMember, nil)
 	}
 
 	// Garante que o Player convidado não pertence a nenhuma outra guild.
-	// TODO Vale extrair para uma função separada?
-	if player.GetCurrentGuild() != uuid.Nil {
-		return nil, ErrPlayerIsAlreadyGuildMember
+	if guest.GetCurrentGuild() != uuid.Nil {
+		return nil, NewGuildError(ErrAnotherGuildMember, nil)
 	}
 
-	// Se o GM enviar o convite, automaticamente o convidado fará parte da guild.
-	// TODO Vale extrair para uma função separada?
-	if sender.GetCurrentGuild() == g.manageBy.ID() {
-		g.AddPlayer(player)
+	if sender.Equals(g.manageBy.PlayerID) {
+		_, err := g.addPlayerUnsafe(guest)
+
+		if err != nil {
+			return nil, NewGuildError(ErrInvalidOperation, err)
+		}
+
+		return nil, nil
 	}
 
-	if g.isInvitedPlayer(player) {
-		return nil, ErrAlreadyInvited
+	if g.isInvitedPlayer(guest) {
+		return nil, NewGuildError(ErrAlreadyInvited, nil)
 	}
 
-	invite := NewInvite(player.PlayerID, sender.PlayerID, g.GuildID)
-	g.invites = append(g.invites, invite)
+	invite := NewInvite(guest.ID(), sender.ID(), g.ID())
+	g.invites[invite.ID()] = invite
 
 	return invite, nil
 }
@@ -91,18 +100,18 @@ func (g *Guild) RejectInvite(invite *Invite) (*Invite, error) {
 	g.Lock()
 	defer g.Unlock()
 
-	inviteIndex := slices.IndexFunc(g.invites, func(i *Invite) bool {
-		return i.InviteID.Equals(invite.InviteID)
-	})
-
-	if inviteIndex == -1 {
-		return nil, ErrInvalidOperation
+	//Check is valid invite
+	if _, isValid := g.invites[invite.ID()]; !isValid {
+		return nil, NewGuildError(ErrInviteNotExistis, nil)
 	}
 
-	g.invites[inviteIndex].reject()
+	err := g.invites[invite.ID()].reject()
 
-	g.invites = append(g.invites[:inviteIndex], g.invites[inviteIndex+1:]...)
+	if err != nil {
+		return nil, NewGuildError(ErrInvalidOperation, err)
+	}
 
+	delete(g.invites, invite.ID())
 	return invite, nil
 }
 
@@ -111,17 +120,18 @@ func (g *Guild) CancelInvite(invite *Invite) (*Invite, error) {
 	g.Lock()
 	defer g.Unlock()
 
-	inviteIndex := slices.IndexFunc(g.invites, func(i *Invite) bool {
-		return i.InviteID.Equals(invite.InviteID)
-	})
-
-	if inviteIndex == -1 {
-		return nil, ErrInvalidOperation
+	//Check is valid invite
+	if _, isValid := g.invites[invite.ID()]; !isValid {
+		return nil, NewGuildError(ErrInviteNotExistis, nil)
 	}
 
-	g.invites[inviteIndex].cancel()
+	err := g.invites[invite.ID()].cancel()
 
-	g.invites = append(g.invites[:inviteIndex], g.invites[inviteIndex+1:]...)
+	if err != nil {
+		return nil, NewGuildError(ErrInvalidOperation, err)
+	}
+
+	delete(g.invites, invite.ID())
 
 	return invite, nil
 }
@@ -130,84 +140,96 @@ func (g *Guild) ApproveInvite(invite *Invite) (*Invite, error) {
 	g.Lock()
 	defer g.Unlock()
 
-	inviteIndex := slices.IndexFunc(g.invites, func(i *Invite) bool {
-		return i.InviteID.Equals(invite.InviteID)
-	})
-
-	if inviteIndex == -1 {
-		return nil, ErrInvalidOperation
+	//Check is valid invite
+	if _, isValid := g.invites[invite.ID()]; !isValid {
+		return nil, NewGuildError(ErrInviteNotExistis, nil)
 	}
 
-	g.invites[inviteIndex].approve()
+	err := g.invites[invite.ID()].approve()
 
-	g.invites = append(g.invites[:inviteIndex], g.invites[inviteIndex+1:]...)
+	if err != nil {
+		return nil, NewGuildError(ErrInvalidOperation, err)
+	}
+
+	delete(g.invites, invite.ID())
 
 	return invite, nil
 }
 
-// TODO tratar concorrência e formas de tornar essa manipulação mais segura e performática - Garantir que somente Roles especificas adicionem pessoas na guild
-// Garantir que players já membros da guild não poderão ser adicionados novamente
-// Garantir que o player adicionado tera o campo CurrentGuild atualizado
-// Estudar forma segura de fazer essa manipulação levando em consideração concorrência
-func (g *Guild) AddPlayer(player *player.Player) (*Guild, error) {
+// TODO - Garantir que somente GM ou Commanders podem remover jogadores
+func (g *Guild) AddPlayer(admin *player.Player, player *player.Player) (*Guild, error) {
 	g.Lock()
 	defer g.Unlock()
 
-	if player.GetCurrentGuild() != uuid.Nil {
-		return nil, ErrPlayerIsAlreadyGuildMember
+	if len(g.players) >= MAX_PLAYERS {
+		return nil, NewGuildError(ErrGuildAlreadyFull, nil)
 	}
 
-	player.UpdateCurrentGuild(g.GuildID.ID())
-	g.players = append(g.players, player)
+	if _, isMember := g.players[player.ID()]; isMember {
+		return nil, NewGuildError(ErrPlayerIsAlreadyGuildMember, nil)
+	}
+
+	if player.GetCurrentGuild() != uuid.Nil {
+		return nil, NewGuildError(ErrAnotherGuildMember, nil)
+	}
+
+	player.UpdateCurrentGuild(g.ID())
+	g.players[player.ID()] = player
 
 	return g, nil
 }
 
 // TODO - Garantir que somente GM ou Commanders podem remover jogadores
-func (g *Guild) RemovePlayer(player *player.Player) (*Guild, error) {
+func (g *Guild) RemovePlayer(admin *player.Player, player *player.Player) (*Guild, error) {
 	g.Lock()
 	defer g.Unlock()
 
-	if player.GetCurrentGuild() == g.ID() {
-		return g, ErrInvalidOperation
+	if _, isMember := g.players[player.ID()]; !isMember {
+		return nil, NewGuildError(ErrNotGuildMember, nil)
 	}
 
-	playerIndex := slices.Index(g.players, player)
-	if playerIndex == -1 {
-		return nil, ErrInvalidOperation
-	}
-
-	g.players = append(g.players[:playerIndex], g.players[playerIndex+1:]...)
-	return nil, ErrInvalidOperation
+	delete(g.players, player.ID())
+	return g, nil
 }
 
 func (g *Guild) LeaveGuild(player *player.Player) (*Guild, error) {
 	g.Lock()
 	defer g.Unlock()
 
-	if player.GetCurrentGuild() == g.ID() {
-		return g, ErrInvalidOperation
+	if _, isMember := g.players[player.ID()]; !isMember {
+		return nil, NewGuildError(ErrNotGuildMember, nil)
 	}
 
-	playerIndex := slices.Index(g.players, player)
-	if playerIndex == -1 {
-		return nil, ErrInvalidOperation
+	delete(g.players, player.ID())
+	return g, nil
+}
+
+func (g *Guild) addPlayerUnsafe(player *player.Player) (*Guild, error) {
+
+	if len(g.players) >= MAX_PLAYERS {
+		return nil, NewGuildError(ErrGuildAlreadyFull, nil)
 	}
 
-	g.players = append(g.players[:playerIndex], g.players[playerIndex+1:]...)
-	return nil, ErrInvalidOperation
+	if _, isMember := g.players[player.ID()]; isMember {
+		return nil, NewGuildError(ErrPlayerIsAlreadyGuildMember, nil)
+	}
+
+	player.UpdateCurrentGuild(g.ID())
+	g.players[player.ID()] = player
+
+	return g, nil
 }
 
 func (g *Guild) isInvitedPlayer(player *player.Player) bool {
 	for _, invite := range g.invites {
-		if invite.GetPlayerID() == player.PlayerID {
+		if invite.GetPlayerID() == player.ID() {
 			return true
 		}
 	}
 	return false
 }
 
-func initializeGuild(guildName string, guildOwner *player.Player, players []*player.Player) *Guild {
+func initializeGuild(guildName string, guildOwner *player.Player, players map[uuid.UUID]*player.Player) *Guild {
 	return &Guild{
 		GuildID:   valueobjects.NewGuildID(uuid.New()),
 		name:      guildName,
@@ -216,6 +238,6 @@ func initializeGuild(guildName string, guildOwner *player.Player, players []*pla
 		vault:     vault.NewVault(),
 		treasure:  treasure.NewTreasure(),
 		players:   players,
-		invites:   make([]*Invite, 0, MAX_INVITES),
+		invites:   make(map[uuid.UUID]*Invite, MAX_INVITES),
 	}
 }
