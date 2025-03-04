@@ -18,7 +18,9 @@ _.so
 
 # Output of the go coverage tool, specifically when used with LiteIDE
 
-\*.out
+*.out
+*.cov
+
 
 # Dependency directories (remove the comment below to include it)
 
@@ -28,7 +30,3 @@ _.so
 
 go.work
 go.work.sum
-
-# conv file
-
-.conv
