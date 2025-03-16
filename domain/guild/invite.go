@@ -14,17 +14,17 @@ type Invite struct {
 	valueobjects.InviteID
 	playerID  uuid.UUID
 	invitedBy uuid.UUID
-	guildID   uuid.UUID
+	guildID   string
 	status    InviteStatus
 	createdAt time.Time
 }
 
-func NewInvite(guest uuid.UUID, sender uuid.UUID, guild uuid.UUID) *Invite {
+func NewInvite(guestId uuid.UUID, senderId uuid.UUID, guildId string) *Invite {
 	return &Invite{
 		InviteID:  valueobjects.NewInviteID(uuid.New()),
-		playerID:  guest,
-		invitedBy: sender,
-		guildID:   guild,
+		playerID:  guestId,
+		invitedBy: senderId,
+		guildID:   guildId,
 		status:    InviteStatus(common.Pending),
 		createdAt: time.Now(),
 	}

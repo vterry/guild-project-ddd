@@ -3,7 +3,6 @@ package vault
 import (
 	"sync"
 
-	"github.com/google/uuid"
 	"github.com/vterry/guild-project-ddd/domain/item"
 	"github.com/vterry/guild-project-ddd/domain/player"
 	"github.com/vterry/guild-project-ddd/domain/vault/valueobjects"
@@ -16,9 +15,9 @@ type Vault struct {
 	sync.Mutex
 }
 
-func NewVault() *Vault {
+func NewVault(guildName string) *Vault {
 	vault := Vault{
-		VaultID:    valueobjects.NewVaultID(uuid.New()),
+		VaultID:    valueobjects.NewVaultID(guildName),
 		Items:      []*item.Item{},
 		GoldAmount: 0,
 	}

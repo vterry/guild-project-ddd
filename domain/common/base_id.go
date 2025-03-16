@@ -1,5 +1,10 @@
 package common
 
+import (
+	"crypto/rand"
+	"encoding/base64"
+)
+
 type BaseID[T comparable] struct {
 	value T
 }
@@ -15,4 +20,13 @@ func (b BaseID[T]) ID() T {
 func (this BaseID[T]) Equals(object any) bool {
 	o, ok := object.(BaseID[T])
 	return ok && this.value == o.value
+}
+
+func ShortUUID(length int) (string, error) {
+	b := make([]byte, length)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+
+	return base64.URLEncoding.EncodeToString(b)[:length*4/3], nil
 }

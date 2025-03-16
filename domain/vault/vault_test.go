@@ -14,6 +14,7 @@ import (
 var (
 	vaultInstance *Vault
 	vaultOnce     sync.Once
+	guildName     = "Sample-Guild"
 )
 
 func TestInicializeVault(t *testing.T) {
@@ -213,12 +214,12 @@ func fillPlayerInventory(p *player.Player, i *item.Item, t int) {
 }
 
 func resetVault() {
-	vaultInstance = NewVault()
+	vaultInstance = NewVault(guildName)
 }
 
 func getVault() *Vault {
 	vaultOnce.Do(func() {
-		vaultInstance = NewVault()
+		vaultInstance = NewVault(guildName)
 	})
 	return vaultInstance
 }

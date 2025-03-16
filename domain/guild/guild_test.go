@@ -2,10 +2,10 @@ package guild
 
 import (
 	"fmt"
+	"strings"
 	"sync"
 	"testing"
 
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/vterry/guild-project-ddd/domain/common"
 	"github.com/vterry/guild-project-ddd/domain/player"
@@ -39,7 +39,7 @@ func TestInvalidGuildInitialization(t *testing.T) {
 		var guildErr *GuildError
 
 		mockPlayer, _ := player.NewPlayer("Mock Player", valueobjects.Mage)
-		mockPlayer.UpdateCurrentGuild(uuid.New())
+		mockPlayer.UpdateCurrentGuild("Sample-Guild-2025-03-16-203640-n3Gkxo6R6")
 
 		_, err := CreateGuild("Error Guild", mockPlayer)
 		assert.ErrorAs(t, err, &guildErr)
@@ -63,7 +63,7 @@ func TestValidGuildInitialization(t *testing.T) {
 	})
 
 	t.Run("Check guild name", func(t *testing.T) {
-		assert.Equal(t, defaultGuildName, guild.name)
+		assert.Equal(t, strings.ReplaceAll(defaultGuildName, " ", "-"), guild.name)
 	})
 
 	t.Run("Check guild owner", func(t *testing.T) {
@@ -170,7 +170,7 @@ func TestGuildInvitationFuncions(t *testing.T) {
 
 		sender, _ := player.NewPlayer("Sender", valueobjects.Warrior)
 		guest, _ := player.NewPlayer("Guest", valueobjects.Ranger)
-		guest.UpdateCurrentGuild(uuid.New())
+		guest.UpdateCurrentGuild("Sample-Guild-2025-03-16-203640-n3Gkxo6R6")
 		guild.InvitePlayer(guildOwner, sender)
 
 		_, err := guild.InvitePlayer(sender, guest)
@@ -411,7 +411,7 @@ func TestAddToGuildFunctions(t *testing.T) {
 		guild := getGuild()
 
 		mockPlayer, _ := player.NewPlayer("MockPlayer", valueobjects.Mage)
-		mockPlayer.UpdateCurrentGuild(uuid.New())
+		mockPlayer.UpdateCurrentGuild("Sample-Guild-2025-03-16-203640-n3Gkxo6R6")
 
 		_, err := guild.AddPlayer(guildOwner, mockPlayer)
 		assert.ErrorAs(t, err, &guildErr)
@@ -469,7 +469,7 @@ func TestRemoveFromGuildFunctions(t *testing.T) {
 		guild := getGuild()
 
 		mockPlayer, _ := player.NewPlayer("MockPlayer", valueobjects.Mage)
-		mockPlayer.UpdateCurrentGuild(uuid.New())
+		mockPlayer.UpdateCurrentGuild("Sample-Guild-2025-03-16-203640-n3Gkxo6R6")
 
 		_, err := guild.RemovePlayer(guildOwner, mockPlayer)
 		assert.ErrorAs(t, err, &guildErr)
@@ -501,7 +501,7 @@ func TestLeaveFromGuildFunctions(t *testing.T) {
 		guild := getGuild()
 
 		mockPlayer, _ := player.NewPlayer("MockPlayer", valueobjects.Mage)
-		mockPlayer.UpdateCurrentGuild(uuid.New())
+		mockPlayer.UpdateCurrentGuild("Sample-Guild-2025-03-16-203640-n3Gkxo6R6")
 
 		_, err := guild.LeaveGuild(mockPlayer)
 		assert.ErrorAs(t, err, &guildErr)
@@ -533,7 +533,7 @@ func TestLeaveGuildFunctions(t *testing.T) {
 		guild := getGuild()
 
 		mockPlayer, _ := player.NewPlayer("MockPlayer", valueobjects.Mage)
-		mockPlayer.UpdateCurrentGuild(uuid.New())
+		mockPlayer.UpdateCurrentGuild("Sample-Guild-2025-03-16-203640-n3Gkxo6R6")
 
 		_, err := guild.RemovePlayer(guildOwner, mockPlayer)
 		assert.ErrorAs(t, err, &guildErr)
@@ -574,13 +574,13 @@ func fullfilGuildCapacity(g *Guild) {
 }
 
 func resetGuild() {
-	guildOwner.UpdateCurrentGuild(uuid.Nil)
+	guildOwner.UpdateCurrentGuild("")
 	guildInstance, _ = CreateGuild(defaultGuildName, guildOwner)
 }
 
 func getGuild() *Guild {
 	guildOnce.Do(func() {
-		guildOwner.UpdateCurrentGuild(uuid.Nil)
+		guildOwner.UpdateCurrentGuild("")
 		guildInstance, _ = CreateGuild(defaultGuildName, guildOwner)
 	})
 	return guildInstance

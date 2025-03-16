@@ -1,17 +1,20 @@
 package valueobjects
 
 import (
-	"github.com/google/uuid"
+	"fmt"
+
 	"github.com/vterry/guild-project-ddd/domain/common"
 )
 
 type TreasureID struct {
-	common.BaseID[uuid.UUID]
+	common.BaseID[string]
 }
 
-func NewTreasureID(value uuid.UUID) TreasureID {
+func NewTreasureID(value string) TreasureID {
+	rand, _ := common.ShortUUID(8)
+	treasureId := fmt.Sprintf("%s-%s", value, rand)
 	return TreasureID{
-		BaseID: common.NewBaseID(value),
+		BaseID: common.NewBaseID(treasureId),
 	}
 }
 

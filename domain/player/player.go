@@ -17,7 +17,7 @@ type Player struct {
 	items        []*item.Item
 	gold         int
 	cash         int
-	currentGuild uuid.UUID
+	currentGuild string
 	sync.Mutex
 }
 
@@ -30,11 +30,11 @@ func NewPlayer(nickname string, class valueobjects.Class) (*Player, error) {
 	return player, nil
 }
 
-func (p *Player) GetCurrentGuild() uuid.UUID {
+func (p *Player) GetCurrentGuild() string {
 	return p.currentGuild
 }
 
-func (p *Player) UpdateCurrentGuild(g uuid.UUID) *Player {
+func (p *Player) UpdateCurrentGuild(g string) *Player {
 	p.Lock()
 	defer p.Unlock()
 	p.currentGuild = g
@@ -118,6 +118,6 @@ func initializePlayer(nickname string, class valueobjects.Class) *Player {
 		items:        make([]*item.Item, 0, MAX_ITEMS),
 		gold:         0,
 		cash:         0,
-		currentGuild: uuid.Nil,
+		currentGuild: "",
 	}
 }

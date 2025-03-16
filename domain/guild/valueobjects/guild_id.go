@@ -1,17 +1,21 @@
 package valueobjects
 
 import (
-	"github.com/google/uuid"
+	"fmt"
+	"time"
+
 	"github.com/vterry/guild-project-ddd/domain/common"
 )
 
 type GuildID struct {
-	common.BaseID[uuid.UUID]
+	common.BaseID[string]
 }
 
-func NewGuildID(value uuid.UUID) GuildID {
+func NewGuildID(guildName string, createdAt time.Time) GuildID {
+	rand, _ := common.ShortUUID(8)
+	guildId := fmt.Sprintf("%s-%s-%s", guildName, createdAt.Format("2006-01-02-150405"), rand)
 	return GuildID{
-		BaseID: common.NewBaseID(value),
+		BaseID: common.NewBaseID(guildId),
 	}
 }
 

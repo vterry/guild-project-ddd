@@ -4,7 +4,6 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/vterry/guild-project-ddd/domain/item"
 	"github.com/vterry/guild-project-ddd/domain/player/valueobjects"
@@ -51,19 +50,19 @@ func TestNewPlayer(t *testing.T) {
 	})
 
 	t.Run("Test player default guild is nil <not a guild member>", func(t *testing.T) {
-		assert.Equal(t, uuid.Nil, player.GetCurrentGuild())
+		assert.Equal(t, "", player.GetCurrentGuild())
 	})
 }
 
 func TestPlayerAsGuildMember(t *testing.T) {
 	t.Cleanup(resetPlayer)
 	player := getPlayer()
-	mockGuildID := new(uuid.UUID)
+	mockGuildID := "sampleguild-2006-01-02-15:04:05-129389dsj"
 
 	t.Run("check if player is a guild member", func(t *testing.T) {
-		player.UpdateCurrentGuild(*mockGuildID)
+		player.UpdateCurrentGuild(mockGuildID)
 		assert.NotNil(t, player.currentGuild)
-		assert.Equal(t, mockGuildID, &player.currentGuild)
+		assert.Equal(t, mockGuildID, player.currentGuild)
 	})
 }
 

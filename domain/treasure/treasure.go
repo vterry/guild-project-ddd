@@ -3,7 +3,6 @@ package treasure
 import (
 	"errors"
 
-	"github.com/google/uuid"
 	"github.com/vterry/guild-project-ddd/domain/player"
 	"github.com/vterry/guild-project-ddd/domain/treasure/valueobjects"
 )
@@ -19,9 +18,9 @@ type Treasure struct {
 	donations  []*Donation
 }
 
-func NewTreasure() *Treasure {
+func NewTreasure(guildName string) *Treasure {
 	treasure := Treasure{
-		TreasureID: valueobjects.NewTreasureID(uuid.New()),
+		TreasureID: valueobjects.NewTreasureID(guildName),
 		cashAmount: 0,
 		donations:  make([]*Donation, 0),
 	}

@@ -1,6 +1,7 @@
 package guild
 
 import (
+	"strings"
 	"sync"
 	"time"
 
@@ -38,14 +39,16 @@ func CreateGuild(guildName string, guildOwner *player.Player) (*Guild, error) {
 		return nil, NewGuildError(ErrMustInformGuidOwner, nil)
 	}
 
-	if guildOwner.GetCurrentGuild() != uuid.Nil {
+	if guildOwner.GetCurrentGuild() != "" {
 		return nil, NewGuildError(ErrAnotherGuildMember, nil)
 	}
 
 	players := make(map[uuid.UUID]*player.Player, MAX_PLAYERS)
 	players[guildOwner.ID()] = guildOwner
 
-	guild := initializeGuild(guildName, guildOwner, players)
+	normalizedGuildName := strings.ReplaceAll(guildName, " ", "-")
+
+	guild := initializeGuild(normalizedGuildName, guildOwner, players)
 	guildOwner.UpdateCurrentGuild(guild.GuildID.ID())
 
 	return guild, nil
@@ -71,7 +74,7 @@ func (g *Guild) InvitePlayer(sender *player.Player, guest *player.Player) (*Invi
 	}
 
 	// Garante que o Player convidado não pertence a nenhuma outra guild.
-	if guest.GetCurrentGuild() != uuid.Nil {
+	if guest.GetCurrentGuild() != "" {
 		return nil, NewGuildError(ErrAnotherGuildMember, nil)
 	}
 
@@ -169,7 +172,7 @@ func (g *Guild) AddPlayer(admin *player.Player, player *player.Player) (*Guild, 
 		return nil, NewGuildError(ErrPlayerIsAlreadyGuildMember, nil)
 	}
 
-	if player.GetCurrentGuild() != uuid.Nil {
+	if player.GetCurrentGuild() != "" {
 		return nil, NewGuildError(ErrAnotherGuildMember, nil)
 	}
 
@@ -230,13 +233,14 @@ func (g *Guild) isInvitedPlayer(player *player.Player) bool {
 }
 
 func initializeGuild(guildName string, guildOwner *player.Player, players map[uuid.UUID]*player.Player) *Guild {
+	createAt := time.Now()
 	return &Guild{
-		GuildID:   valueobjects.NewGuildID(uuid.New()),
+		GuildID:   valueobjects.NewGuildID(guildName, createAt),
 		name:      guildName,
-		createdAt: time.Now(),
+		createdAt: createAt,
 		manageBy:  guildOwner,
-		vault:     vault.NewVault(),
-		treasure:  treasure.NewTreasure(),
+		vault:     vault.NewVault(guildName),
+		treasure:  treasure.NewTreasure(guildName),
 		players:   players,
 		invites:   make(map[uuid.UUID]*Invite, MAX_INVITES),
 	}
