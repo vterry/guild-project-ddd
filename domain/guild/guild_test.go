@@ -25,6 +25,11 @@ func TestInvalidGuildInitialization(t *testing.T) {
 		assert.ErrorIs(t, err, ErrInvalidGuildName)
 	})
 
+	t.Run("test create new guild large name", func(t *testing.T) {
+		_, err := CreateGuild("GuildGuildGuildGuild", guildOwner)
+		assert.ErrorIs(t, err, ErrInvalidGuildName)
+	})
+
 	t.Run("test create new guild with special character (space)", func(t *testing.T) {
 		_, err := CreateGuild("Guild Special", guildOwner)
 		assert.ErrorIs(t, err, ErrInvalidCharName)
