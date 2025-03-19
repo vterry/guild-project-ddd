@@ -2,7 +2,6 @@ package guild
 
 import (
 	"fmt"
-	"strings"
 	"sync"
 	"testing"
 
@@ -13,7 +12,7 @@ import (
 )
 
 var (
-	defaultGuildName = "Guild Default"
+	defaultGuildName = "GuildDefault"
 	guildOwner, _    = player.NewPlayer("Guild Owner", valueobjects.Mage)
 	guildInstance    *Guild
 	guildOnce        sync.Once
@@ -21,30 +20,31 @@ var (
 
 func TestInvalidGuildInitialization(t *testing.T) {
 	t.Cleanup(resetGuild)
-	t.Run("test create new guild with invalid name", func(t *testing.T) {
-		var guildErr *GuildError
+	t.Run("test create new guild with empty name", func(t *testing.T) {
 		_, err := CreateGuild("", guildOwner)
-		assert.ErrorAs(t, err, &guildErr)
-		assert.Contains(t, ErrInvalidGuildName.Error(), guildErr.Error())
+		assert.ErrorIs(t, err, ErrInvalidGuildName)
+	})
+
+	t.Run("test create new guild with special character (space)", func(t *testing.T) {
+		_, err := CreateGuild("Guild Special", guildOwner)
+		assert.ErrorIs(t, err, ErrInvalidCharName)
+	})
+
+	t.Run("test create new guild with special character", func(t *testing.T) {
+		_, err := CreateGuild("Guild@Spec14l", guildOwner)
+		assert.ErrorIs(t, err, ErrInvalidCharName)
 	})
 
 	t.Run("test create new guild with no guild owner", func(t *testing.T) {
-		var guildErr *GuildError
 		_, err := CreateGuild(defaultGuildName, nil)
-		assert.ErrorAs(t, err, &guildErr)
-		assert.Contains(t, ErrMustInformGuidOwner.Error(), guildErr.Error())
+		assert.ErrorIs(t, err, ErrMustInformGuidOwner)
 	})
 
 	t.Run("test create new build being member of another", func(t *testing.T) {
-		var guildErr *GuildError
-
 		mockPlayer, _ := player.NewPlayer("Mock Player", valueobjects.Mage)
-		mockPlayer.UpdateCurrentGuild("Sample-Guild-2025-03-16-203640-n3Gkxo6R6")
-
-		_, err := CreateGuild("Error Guild", mockPlayer)
-		assert.ErrorAs(t, err, &guildErr)
-		assert.Contains(t, ErrAnotherGuildMember.Error(), guildErr.Error())
-
+		mockPlayer.UpdateCurrentGuild("SampleGuild-2025-03-16-203640-n3Gkxo6R6")
+		_, err := CreateGuild("ErrorGuild", mockPlayer)
+		assert.ErrorIs(t, err, ErrAnotherGuildMember)
 	})
 }
 
@@ -63,7 +63,7 @@ func TestValidGuildInitialization(t *testing.T) {
 	})
 
 	t.Run("Check guild name", func(t *testing.T) {
-		assert.Equal(t, strings.ReplaceAll(defaultGuildName, " ", "-"), guild.name)
+		assert.Equal(t, defaultGuildName, guild.name)
 	})
 
 	t.Run("Check guild owner", func(t *testing.T) {

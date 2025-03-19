@@ -1,11 +1,11 @@
 package guild
 
 import (
-	"strings"
 	"sync"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/vterry/guild-project-ddd/domain/common"
 	"github.com/vterry/guild-project-ddd/domain/guild/valueobjects"
 	"github.com/vterry/guild-project-ddd/domain/player"
 	"github.com/vterry/guild-project-ddd/domain/treasure"
@@ -31,24 +31,21 @@ type Guild struct {
 
 func CreateGuild(guildName string, guildOwner *player.Player) (*Guild, error) {
 
-	if len(guildName) < 4 || len(guildName) > 15 {
-		return nil, NewGuildError(ErrInvalidGuildName, nil)
+	params := CreateGuildParams{
+		guildName:  guildName,
+		guildOwner: guildOwner,
 	}
 
-	if guildOwner == nil {
-		return nil, NewGuildError(ErrMustInformGuidOwner, nil)
-	}
+	spec := NewGuildSpecification()
 
-	if guildOwner.GetCurrentGuild() != "" {
-		return nil, NewGuildError(ErrAnotherGuildMember, nil)
+	if err := spec(common.Base[CreateGuildParams]{Entity: &params}); err != nil {
+		return nil, err
 	}
 
 	players := make(map[uuid.UUID]*player.Player, MAX_PLAYERS)
 	players[guildOwner.ID()] = guildOwner
 
-	normalizedGuildName := strings.ReplaceAll(guildName, " ", "-")
-
-	guild := initializeGuild(normalizedGuildName, guildOwner, players)
+	guild := initializeGuild(guildName, guildOwner, players)
 	guildOwner.UpdateCurrentGuild(guild.GuildID.ID())
 
 	return guild, nil

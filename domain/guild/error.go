@@ -8,6 +8,7 @@ import (
 
 var (
 	ErrInvalidGuildName           = errors.New("guild's name must by between 4 and 15 characters")
+	ErrInvalidCharName            = errors.New("name cannot contain special characteres")
 	ErrMustInformGuidOwner        = errors.New("a guild master must be inform")
 	ErrPlayerIsAlreadyGuildMember = errors.New("player is already a guild's member")
 	ErrAnotherGuildMember         = errors.New("player is already member of another guild")
