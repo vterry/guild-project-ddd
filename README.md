@@ -2,8 +2,6 @@
 
 ## Why am I doing this?
 
-Here’s the translation of your text into English:
-
 It’s been a while since I transitioned from being a developer to managing development teams. Over these three years, I’ve focused on strengthening my skills in people management, leadership, and understanding how to best perform in this role.
 
 Growing into this new world has been enjoyable, but in some ways, I miss getting my hands dirty—writing code and learning new things.
@@ -12,16 +10,16 @@ The idea behind this project is to use some of my free time to study and explore
 
 ## What I want to explore
 
-Well, from start I want to re(read) some technical books and try but every concept in a orthodox way to reflect on trade offs.
+Well, from start I want to re(read) some technical books and try put every concept in a orthodox way to reflect on trade offs.
 
-I also want to learn a new programming language. I chose it for reasons of its because I like gopher :D
+I also want to learn a new programming language. I chose go because I though it will be fun :D
 
 For this project, I've prepare a list of books. Some I've already read, other were recommended by friends but I never read and now its time to read them all.
 
 Books:
 
-- Go The Programming Language <- _now reading_
-- Implementing DDD by Vernon
+- ~~Go The Programming Language~~
+- Implementing DDD by Vernon <- _reading_
 - The Pragmatic Programmer - 20th Anniversary Edition
 - Refactoring 1st & 2nd edition
 - Agile Software Development
@@ -39,7 +37,7 @@ Books:
 
 Yeah ... I's a lot of book, but time isnt a problem here.
 
-**It is a small project, is it worth that effort and maybe over engineer?** Surely not, but the object here is just get hands dirty and evaluate trade off.
+**It is a small project, is it worth that effort and maybe future overengineer?** Surely not, but the object here is just get hands dirty and evaluate trade off.
 
 ## About the Guild Project
 
@@ -74,7 +72,7 @@ It's just the first approach to try to understand the main components and it's r
 
 ## What do we have so far?
 
-As I progressed reading Go The Programming language and consuming other content about Go, I made this firts domain implementation:
+As I progressed reading Go The Programming language and consuming other content about Go, I made this firts domain implementation.
 
 ```
 domain/
@@ -111,6 +109,8 @@ domain/
     └── treasure.go
 ```
 
+During this process I realized that I need to add new entities (classes) into my first diagram to make things works. I also adding new rules and validations.
+
 Donation features will be implement after a complete foundation.
 
 ## Next Step
@@ -119,4 +119,4 @@ Starting implementing the Domain Service layer:
 
 ![image info](./pictures/high_level_arch.png)
 
-Here I want o read Implementing DDD by Vernon and explore concepts like Domain Services, Repositories, Domain Events and how can I take advantage of them to implement Donation's Features and create a kind of trace log transctions of items and gold in vault
+Here I want to read Implementing DDD by Vernon and explore concepts like Domain Services, Repositories, Domain Events and how can I take advantage of them to implement Donation's Features and create a kind of trace log transctions of items and gold in vault
