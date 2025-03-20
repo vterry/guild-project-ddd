@@ -7,6 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/vterry/guild-project-ddd/domain/common"
+	"github.com/vterry/guild-project-ddd/domain/guild/specs"
 	"github.com/vterry/guild-project-ddd/domain/player"
 	"github.com/vterry/guild-project-ddd/domain/player/valueobjects"
 )
@@ -22,34 +23,34 @@ func TestInvalidGuildInitialization(t *testing.T) {
 	t.Cleanup(resetGuild)
 	t.Run("test create new guild with empty name", func(t *testing.T) {
 		_, err := CreateGuild("", guildOwner)
-		assert.ErrorIs(t, err, ErrInvalidGuildName)
+		assert.ErrorIs(t, err, specs.ErrInvalidGuildName)
 	})
 
 	t.Run("test create new guild large name", func(t *testing.T) {
 		_, err := CreateGuild("GuildGuildGuildGuild", guildOwner)
-		assert.ErrorIs(t, err, ErrInvalidGuildName)
+		assert.ErrorIs(t, err, specs.ErrInvalidGuildName)
 	})
 
 	t.Run("test create new guild with special character (space)", func(t *testing.T) {
 		_, err := CreateGuild("Guild Special", guildOwner)
-		assert.ErrorIs(t, err, ErrInvalidCharName)
+		assert.ErrorIs(t, err, specs.ErrInvalidCharName)
 	})
 
 	t.Run("test create new guild with special character", func(t *testing.T) {
 		_, err := CreateGuild("Guild@Spec14l", guildOwner)
-		assert.ErrorIs(t, err, ErrInvalidCharName)
+		assert.ErrorIs(t, err, specs.ErrInvalidCharName)
 	})
 
 	t.Run("test create new guild with no guild owner", func(t *testing.T) {
 		_, err := CreateGuild(defaultGuildName, nil)
-		assert.ErrorIs(t, err, ErrMustInformGuidOwner)
+		assert.ErrorIs(t, err, specs.ErrMustInformGuidOwner)
 	})
 
 	t.Run("test create new build being member of another", func(t *testing.T) {
 		mockPlayer, _ := player.NewPlayer("Mock Player", valueobjects.Mage)
 		mockPlayer.UpdateCurrentGuild("SampleGuild-2025-03-16-203640-n3Gkxo6R6")
 		_, err := CreateGuild("ErrorGuild", mockPlayer)
-		assert.ErrorIs(t, err, ErrAnotherGuildMember)
+		assert.ErrorIs(t, err, specs.ErrAnotherGuildMember)
 	})
 }
 
@@ -110,7 +111,6 @@ func TestGuildInvitationFuncions(t *testing.T) {
 	})
 
 	t.Run("Test guild's member inviting player", func(t *testing.T) {
-		var guildErr *GuildError
 
 		t.Cleanup(resetGuild)
 		guild := getGuild()
@@ -127,14 +127,12 @@ func TestGuildInvitationFuncions(t *testing.T) {
 
 		_, err := guild.InvitePlayer(sender, guest)
 
-		assert.ErrorAs(t, err, &guildErr)
-		assert.Contains(t, ErrAlreadyInvited.Error(), guildErr.Error())
+		assert.ErrorIs(t, err, ErrAlreadyInvited)
 		assert.Equal(t, lenInvites, len(guild.invites))
 
 	})
 
 	t.Run("Test where sender is not a guild's member", func(t *testing.T) {
-		var guildErr *GuildError
 
 		t.Cleanup(resetGuild)
 		guild := getGuild()
@@ -144,13 +142,11 @@ func TestGuildInvitationFuncions(t *testing.T) {
 
 		_, err := guild.InvitePlayer(sender, guest)
 
-		assert.ErrorAs(t, err, &guildErr)
-		assert.Contains(t, ErrCannotInvite.Error(), guildErr.Error())
+		assert.ErrorIs(t, err, specs.ErrCannotInvite)
 
 	})
 
 	t.Run("Test where guest is already guild's member", func(t *testing.T) {
-		var guildErr *GuildError
 
 		t.Cleanup(resetGuild)
 		guild := getGuild()
@@ -162,13 +158,11 @@ func TestGuildInvitationFuncions(t *testing.T) {
 
 		_, err := guild.InvitePlayer(sender, guest)
 
-		assert.ErrorAs(t, err, &guildErr)
-		assert.Contains(t, ErrPlayerIsAlreadyGuildMember.Error(), guildErr.Error())
+		assert.ErrorIs(t, err, specs.ErrPlayerIsAlreadyGuildMember)
 
 	})
 
 	t.Run("Test where guest is already member of another guild", func(t *testing.T) {
-		var guildErr *GuildError
 
 		t.Cleanup(resetGuild)
 		guild := getGuild()
@@ -180,13 +174,11 @@ func TestGuildInvitationFuncions(t *testing.T) {
 
 		_, err := guild.InvitePlayer(sender, guest)
 
-		assert.ErrorAs(t, err, &guildErr)
-		assert.Contains(t, ErrAnotherGuildMember.Error(), guildErr.Error())
+		assert.ErrorIs(t, err, specs.ErrAnotherGuildMember)
 
 	})
 
 	t.Run("Test invite player with no room for new invites", func(t *testing.T) {
-		var guildErr *GuildError
 
 		t.Cleanup(resetGuild)
 		guild := getGuild()
@@ -199,14 +191,11 @@ func TestGuildInvitationFuncions(t *testing.T) {
 
 		_, err := guild.InvitePlayer(sender, guest)
 
-		assert.ErrorAs(t, err, &guildErr)
-		assert.Contains(t, ErrNoInviteAvailable.Error(), guildErr.Error())
+		assert.ErrorIs(t, err, specs.ErrNoInviteAvailable)
 
 	})
 
 	t.Run("Test invite player with no room for new players", func(t *testing.T) {
-		var guildErr *GuildError
-
 		t.Cleanup(resetGuild)
 		guild := getGuild()
 
@@ -218,8 +207,7 @@ func TestGuildInvitationFuncions(t *testing.T) {
 
 		_, err := guild.InvitePlayer(sender, guest)
 
-		assert.ErrorAs(t, err, &guildErr)
-		assert.Contains(t, ErrNoInviteAvailable.Error(), guildErr.Error())
+		assert.ErrorIs(t, err, specs.ErrGuildAlreadyFull)
 
 	})
 
@@ -228,7 +216,6 @@ func TestGuildInvitationFuncions(t *testing.T) {
 func TestGuildInviteRejectFunctions(t *testing.T) {
 
 	t.Run("Test reject a invite that not exists", func(t *testing.T) {
-		var guildErr *GuildError
 
 		t.Cleanup(resetGuild)
 		guild := getGuild()
@@ -238,13 +225,11 @@ func TestGuildInviteRejectFunctions(t *testing.T) {
 		mockInvite := NewInvite(guest.ID(), sender.ID(), guild.ID())
 
 		_, err := guild.RejectInvite(mockInvite)
-		assert.ErrorAs(t, err, &guildErr)
-		assert.Contains(t, ErrInviteNotExistis.Error(), guildErr.Error())
+		assert.ErrorIs(t, err, ErrInviteNotExistis)
 
 	})
 
 	t.Run("Test reject a invite with an invalid state (!= Pending)", func(t *testing.T) {
-		var guildErr *GuildError
 
 		t.Cleanup(resetGuild)
 		guild := getGuild()
@@ -257,8 +242,7 @@ func TestGuildInviteRejectFunctions(t *testing.T) {
 		mockInvite.approve()
 
 		_, err := guild.RejectInvite(mockInvite)
-		assert.ErrorAs(t, err, &guildErr)
-		assert.Contains(t, NewGuildError(ErrInvalidOperation, ErrInvalidInviteState).Error(), guildErr.Error())
+		assert.ErrorIs(t, err, ErrInvalidOperation, ErrInvalidInviteState)
 
 	})
 
@@ -289,7 +273,6 @@ func TestGuildInviteRejectFunctions(t *testing.T) {
 func TestGuildInviteCancelFunctions(t *testing.T) {
 
 	t.Run("Test cancel a invite that not exists", func(t *testing.T) {
-		var guildErr *GuildError
 
 		t.Cleanup(resetGuild)
 		guild := getGuild()
@@ -299,14 +282,11 @@ func TestGuildInviteCancelFunctions(t *testing.T) {
 		mockInvite := NewInvite(guest.ID(), sender.ID(), guild.ID())
 
 		_, err := guild.CancelInvite(mockInvite)
-		assert.ErrorAs(t, err, &guildErr)
-		assert.Contains(t, ErrInviteNotExistis.Error(), guildErr.Error())
+		assert.ErrorIs(t, err, ErrInviteNotExistis)
 
 	})
 
 	t.Run("Test cancel a invite with an invalid state (!= Pending)", func(t *testing.T) {
-		var guildErr *GuildError
-
 		t.Cleanup(resetGuild)
 		guild := getGuild()
 
@@ -318,8 +298,7 @@ func TestGuildInviteCancelFunctions(t *testing.T) {
 		mockInvite.approve()
 
 		_, err := guild.CancelInvite(mockInvite)
-		assert.ErrorAs(t, err, &guildErr)
-		assert.Contains(t, NewGuildError(ErrInvalidOperation, ErrInvalidInviteState).Error(), guildErr.Error())
+		assert.ErrorIs(t, err, ErrInvalidOperation, ErrInvalidInviteState)
 
 	})
 
@@ -350,8 +329,6 @@ func TestGuildInviteCancelFunctions(t *testing.T) {
 func TestGuildInviteApproveFunctions(t *testing.T) {
 
 	t.Run("Test approve a invite that not exists", func(t *testing.T) {
-		var guildErr *GuildError
-
 		t.Cleanup(resetGuild)
 		guild := getGuild()
 
@@ -360,14 +337,11 @@ func TestGuildInviteApproveFunctions(t *testing.T) {
 		mockInvite := NewInvite(guest.ID(), sender.ID(), guild.ID())
 
 		_, err := guild.ApproveInvite(mockInvite)
-		assert.ErrorAs(t, err, &guildErr)
-		assert.Contains(t, ErrInviteNotExistis.Error(), guildErr.Error())
+		assert.ErrorIs(t, err, ErrInviteNotExistis)
 
 	})
 
 	t.Run("Test approve a invite with an invalid state (!= Pending)", func(t *testing.T) {
-		var guildErr *GuildError
-
 		t.Cleanup(resetGuild)
 		guild := getGuild()
 
@@ -379,8 +353,7 @@ func TestGuildInviteApproveFunctions(t *testing.T) {
 		mockInvite.reject()
 
 		_, err := guild.ApproveInvite(mockInvite)
-		assert.ErrorAs(t, err, &guildErr)
-		assert.Contains(t, NewGuildError(ErrInvalidOperation, ErrInvalidInviteState).Error(), guildErr.Error())
+		assert.ErrorIs(t, err, ErrInvalidOperation, ErrInvalidInviteState)
 
 	})
 
@@ -410,8 +383,6 @@ func TestGuildInviteApproveFunctions(t *testing.T) {
 
 func TestAddToGuildFunctions(t *testing.T) {
 	t.Run("Test adding player of another guild", func(t *testing.T) {
-		var guildErr *GuildError
-
 		t.Cleanup(resetGuild)
 		guild := getGuild()
 
@@ -419,13 +390,10 @@ func TestAddToGuildFunctions(t *testing.T) {
 		mockPlayer.UpdateCurrentGuild("Sample-Guild-2025-03-16-203640-n3Gkxo6R6")
 
 		_, err := guild.AddPlayer(guildOwner, mockPlayer)
-		assert.ErrorAs(t, err, &guildErr)
-		assert.Contains(t, ErrAnotherGuildMember.Error(), guildErr.Error())
+		assert.ErrorIs(t, err, specs.ErrAnotherGuildMember)
 	})
 
 	t.Run("Test adding player who is already a guild's member", func(t *testing.T) {
-		var guildErr *GuildError
-
 		t.Cleanup(resetGuild)
 		guild := getGuild()
 
@@ -433,13 +401,10 @@ func TestAddToGuildFunctions(t *testing.T) {
 		guild.InvitePlayer(guildOwner, guest)
 
 		_, err := guild.AddPlayer(guildOwner, guest)
-		assert.ErrorAs(t, err, &guildErr)
-		assert.Contains(t, ErrPlayerIsAlreadyGuildMember.Error(), guildErr.Error())
+		assert.ErrorIs(t, err, specs.ErrPlayerIsAlreadyGuildMember)
 	})
 
 	t.Run("Test adding player with no room for new players", func(t *testing.T) {
-		var guildErr *GuildError
-
 		t.Cleanup(resetGuild)
 		guild := getGuild()
 
@@ -448,8 +413,7 @@ func TestAddToGuildFunctions(t *testing.T) {
 		fullfilGuildCapacity(guild)
 
 		_, err := guild.AddPlayer(guildOwner, guest)
-		assert.ErrorAs(t, err, &guildErr)
-		assert.Contains(t, ErrGuildAlreadyFull.Error(), guildErr.Error())
+		assert.ErrorIs(t, err, specs.ErrGuildAlreadyFull)
 	})
 
 	t.Run("Test adding new player", func(t *testing.T) {
@@ -468,8 +432,6 @@ func TestAddToGuildFunctions(t *testing.T) {
 
 func TestRemoveFromGuildFunctions(t *testing.T) {
 	t.Run("Test remove player who isn't a guild's member", func(t *testing.T) {
-		var guildErr *GuildError
-
 		t.Cleanup(resetGuild)
 		guild := getGuild()
 
@@ -477,8 +439,7 @@ func TestRemoveFromGuildFunctions(t *testing.T) {
 		mockPlayer.UpdateCurrentGuild("Sample-Guild-2025-03-16-203640-n3Gkxo6R6")
 
 		_, err := guild.RemovePlayer(guildOwner, mockPlayer)
-		assert.ErrorAs(t, err, &guildErr)
-		assert.Contains(t, ErrNotGuildMember.Error(), guildErr.Error())
+		assert.ErrorIs(t, err, ErrNotGuildMember)
 	})
 
 	t.Run("Test remove a guild's member", func(t *testing.T) {
@@ -500,8 +461,6 @@ func TestRemoveFromGuildFunctions(t *testing.T) {
 
 func TestLeaveFromGuildFunctions(t *testing.T) {
 	t.Run("Test leave not being a guild's member", func(t *testing.T) {
-		var guildErr *GuildError
-
 		t.Cleanup(resetGuild)
 		guild := getGuild()
 
@@ -509,8 +468,7 @@ func TestLeaveFromGuildFunctions(t *testing.T) {
 		mockPlayer.UpdateCurrentGuild("Sample-Guild-2025-03-16-203640-n3Gkxo6R6")
 
 		_, err := guild.LeaveGuild(mockPlayer)
-		assert.ErrorAs(t, err, &guildErr)
-		assert.Contains(t, ErrNotGuildMember.Error(), guildErr.Error())
+		assert.ErrorIs(t, err, ErrNotGuildMember)
 	})
 
 	t.Run("Test leave guild", func(t *testing.T) {
@@ -532,8 +490,6 @@ func TestLeaveFromGuildFunctions(t *testing.T) {
 
 func TestLeaveGuildFunctions(t *testing.T) {
 	t.Run("Test remove player who isn't a guild's member", func(t *testing.T) {
-		var guildErr *GuildError
-
 		t.Cleanup(resetGuild)
 		guild := getGuild()
 
@@ -541,8 +497,7 @@ func TestLeaveGuildFunctions(t *testing.T) {
 		mockPlayer.UpdateCurrentGuild("Sample-Guild-2025-03-16-203640-n3Gkxo6R6")
 
 		_, err := guild.RemovePlayer(guildOwner, mockPlayer)
-		assert.ErrorAs(t, err, &guildErr)
-		assert.Contains(t, ErrNotGuildMember.Error(), guildErr.Error())
+		assert.ErrorIs(t, err, ErrNotGuildMember)
 	})
 
 	t.Run("Test remove a guild's member", func(t *testing.T) {

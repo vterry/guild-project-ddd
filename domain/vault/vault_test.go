@@ -1,7 +1,6 @@
 package vault
 
 import (
-	"strings"
 	"sync"
 	"testing"
 
@@ -52,10 +51,10 @@ func TestAddItem(t *testing.T) {
 	t.Cleanup(resetVault)
 	vault := getVault()
 
-	player, _ := player.NewPlayer("Player 1", valueobjects.Warrior)
+	p1, _ := player.NewPlayer("Player 1", valueobjects.Warrior)
 	item1 := item.PickRandomItem()
 	item2 := item.PickRandomItem()
-	player.PickItem(item1)
+	p1.PickItem(item1)
 
 	if vault == nil {
 		t.Error("Error initializing vault")
@@ -63,15 +62,14 @@ func TestAddItem(t *testing.T) {
 	}
 
 	t.Run("Add item that player not have", func(t *testing.T) {
-		var vaultError *VaultError
-		err := vault.AddItem(item2, player)
-		assert.ErrorAs(t, err, &vaultError)
-		assert.Contains(t, ErrInvalidOperation.Error(), strings.Split(vaultError.Error(), "\n")[0])
+		err := vault.AddItem(item2, p1)
+		assert.ErrorIs(t, err, ErrInvalidOperation)
+		assert.ErrorContains(t, err, player.ErrItemNotFound.Error())
 		assert.Equal(t, 0, len(vault.Items))
 	})
 
 	t.Run("Add item that player has", func(t *testing.T) {
-		vault.AddItem(item1, player)
+		vault.AddItem(item1, p1)
 		assert.NotEqual(t, 0, len(vault.Items))
 		assert.Positive(t, len(vault.Items))
 		assert.Equal(t, item1.Name(), vault.Items[0].Name())
@@ -98,46 +96,38 @@ func TestRetriveItem(t *testing.T) {
 	}
 
 	t.Run("Retrieve item from empty vault", func(t *testing.T) {
-		var vaultError *VaultError
 		err := vault.RetriveItem(item1, regPlayer)
-		assert.ErrorAs(t, err, &vaultError)
-		assert.Contains(t, ErrEmptyVault.Error(), vaultError.Error())
+		assert.ErrorIs(t, err, ErrEmptyVault)
 	})
 
 	t.Run("Retrieve existing item from vault", func(t *testing.T) {
-		var vaultError *VaultError
-
 		vault.AddItem(item1, regPlayer)
 		assert.Equal(t, 1, len(vault.Items))
 
 		err := vault.RetriveItem(item1, regPlayer)
-		assert.NotErrorAs(t, err, &vaultError)
+		assert.ErrorIs(t, err, nil)
 		assert.Equal(t, 0, len(vault.Items))
 	})
 
 	t.Run("Retrieve unexisting item from vault", func(t *testing.T) {
-		var vaultErr *VaultError
-
 		vault.AddItem(item1, regPlayer)
 		vaultSize := len(vault.Items)
 
 		err := vault.RetriveItem(item.PickRandomItem(), regPlayer)
 		assert.Error(t, vault.RetriveItem(item3, regPlayer))
 
-		assert.ErrorAs(t, err, &vaultErr)
-		assert.Contains(t, vaultErr.Error(), ErrItemNotFound.Error())
+		assert.ErrorIs(t, err, ErrItemNotFound)
 		assert.Equal(t, vaultSize, len(vault.Items))
 
 	})
 
 	t.Run("Player retriving item from vault with no space left in inventory", func(t *testing.T) {
-		var vaultError *VaultError
-
 		vault.AddItem(item1, regPlayer)
 		vaultSize := len(vault.Items)
 		err := vault.RetriveItem(item1, maxInvPlayer)
 
-		assert.ErrorAs(t, err, &vaultError)
+		assert.ErrorIs(t, err, ErrInvalidOperation)
+		assert.ErrorContains(t, err, player.ErrNotEnoughSpace.Error())
 		assert.Equal(t, vaultSize, len(vault.Items))
 	})
 
@@ -149,11 +139,8 @@ func TestAddGold(t *testing.T) {
 	player, _ := player.NewPlayer("Player 1", valueobjects.Ranger)
 
 	t.Run("Deposit negative gold amount", func(t *testing.T) {
-		var vaultError *VaultError
-
 		err := vault.AddGold(-1, player)
-		assert.ErrorAs(t, err, &vaultError)
-		assert.Equal(t, ErrNegativeGoldAmount.Error(), vaultError.Error())
+		assert.ErrorIs(t, err, ErrNegativeGoldAmount)
 	})
 
 	t.Run("Deposit valid amount of gold", func(t *testing.T) {
@@ -164,11 +151,8 @@ func TestAddGold(t *testing.T) {
 	})
 
 	t.Run("Deposit value that player doestn have", func(t *testing.T) {
-		var vaultError *VaultError
-
 		err := vault.AddGold(2000, player)
-		assert.ErrorAs(t, err, &vaultError)
-		assert.Equal(t, ErrInvalidGoldAmount.Error(), vaultError.Error())
+		assert.ErrorIs(t, err, ErrInvalidGoldAmount)
 	})
 
 }
@@ -179,19 +163,13 @@ func TestGoldWithdraw(t *testing.T) {
 	player, _ := player.NewPlayer("Player 1", valueobjects.Ranger)
 
 	t.Run("Withdraw negative value", func(t *testing.T) {
-		var vaultError *VaultError
-
 		err := vault.GoldWithdraw(-1, player)
-		assert.ErrorAs(t, err, &vaultError)
-		assert.Equal(t, ErrNegativeGoldAmount.Error(), vaultError.Error())
+		assert.ErrorIs(t, err, ErrNegativeGoldAmount)
 	})
 
 	t.Run("Withdraw negative that vault dont have", func(t *testing.T) {
-		var vaultError *VaultError
-
 		err := vault.GoldWithdraw(1, player)
-		assert.ErrorAs(t, err, &vaultError)
-		assert.Equal(t, ErrInvalidGoldAmount.Error(), vaultError.Error())
+		assert.ErrorIs(t, err, ErrInvalidGoldAmount)
 	})
 
 	t.Run("Withdraw correct value from vault", func(t *testing.T) {

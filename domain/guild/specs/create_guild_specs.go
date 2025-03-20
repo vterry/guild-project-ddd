@@ -1,18 +1,27 @@
-package guild
+package specs
 
 import (
+	"errors"
+	"regexp"
+
 	"github.com/vterry/guild-project-ddd/domain/common"
 	"github.com/vterry/guild-project-ddd/domain/player"
 )
 
+var (
+	ErrInvalidGuildName    = errors.New("guild's name must by between 4 and 15 characters")
+	ErrInvalidCharName     = errors.New("name cannot contain special characteres")
+	ErrMustInformGuidOwner = errors.New("a guild master must be inform")
+)
+
 type CreateGuildParams struct {
-	guildName  string
-	guildOwner *player.Player
+	GuildName  string
+	GuildOwner *player.Player
 }
 
-// Totaly overengineer here, but I wanted to implement an example of Specification Pattern in Go
+// Still reflective if for that example this implementation worth -- It feel It could be implemented in a very simple way
 
-func NewGuildSpecification() common.Specification[CreateGuildParams] {
+func NewCreateGuildSpecification() common.Specification[CreateGuildParams] {
 	return common.And(
 		NameNotEmptySpec(),
 		NotSpecialCharacterSpec(),
@@ -23,7 +32,7 @@ func NewGuildSpecification() common.Specification[CreateGuildParams] {
 
 func NameNotEmptySpec() common.Specification[CreateGuildParams] {
 	return func(b common.Base[CreateGuildParams]) error {
-		guildName := b.Entity.guildName
+		guildName := b.Entity.GuildName
 		if len(guildName) < 4 || len(guildName) > 15 {
 			return ErrInvalidGuildName
 		}
@@ -33,7 +42,7 @@ func NameNotEmptySpec() common.Specification[CreateGuildParams] {
 
 func NotSpecialCharacterSpec() common.Specification[CreateGuildParams] {
 	return func(b common.Base[CreateGuildParams]) error {
-		if hasSpecialCharacters(b.Entity.guildName) {
+		if hasSpecialCharacters(b.Entity.GuildName) {
 			return ErrInvalidCharName
 		}
 
@@ -43,7 +52,7 @@ func NotSpecialCharacterSpec() common.Specification[CreateGuildParams] {
 
 func OwnerNotEmptySpec() common.Specification[CreateGuildParams] {
 	return func(b common.Base[CreateGuildParams]) error {
-		if b.Entity.guildOwner == nil {
+		if b.Entity.GuildOwner == nil {
 			return ErrMustInformGuidOwner
 		}
 		return nil
@@ -51,27 +60,17 @@ func OwnerNotEmptySpec() common.Specification[CreateGuildParams] {
 }
 
 func NotBeingAnotherGuildMember() common.Specification[CreateGuildParams] {
-	return func(b common.Base[CreateGuildParams]) error {
-
-		spec := OwnerNotEmptySpec()
-		if err := spec(b); err != nil {
-			return err
-		}
-
-		if b.Entity.guildOwner.GetCurrentGuild() != "" {
-			return ErrAnotherGuildMember
-		}
-		return nil
-	}
+	return common.And(
+		OwnerNotEmptySpec(),
+		PlayerNotInAnotherGuildSpec(
+			func(p *CreateGuildParams) *player.Player {
+				return p.GuildOwner
+			},
+		),
+	)
 }
 
 func hasSpecialCharacters(input string) bool {
-	for _, char := range input {
-		if !((char >= 'a' && char <= 'z') ||
-			(char >= 'A' && char <= 'Z') ||
-			(char >= '0' && char <= '9')) {
-			return true
-		}
-	}
-	return false
+	re := regexp.MustCompile(`[^a-zA-Z0-9]`)
+	return re.MatchString(input)
 }

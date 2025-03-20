@@ -1,11 +1,14 @@
 package guild
 
 import (
+	"errors"
+	"fmt"
 	"sync"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/vterry/guild-project-ddd/domain/common"
+	"github.com/vterry/guild-project-ddd/domain/guild/specs"
 	"github.com/vterry/guild-project-ddd/domain/guild/valueobjects"
 	"github.com/vterry/guild-project-ddd/domain/player"
 	"github.com/vterry/guild-project-ddd/domain/treasure"
@@ -15,6 +18,13 @@ import (
 const (
 	MAX_PLAYERS = 50
 	MAX_INVITES = 50
+)
+
+var (
+	ErrNotGuildMember   = errors.New("player isnt a guild member")
+	ErrAlreadyInvited   = errors.New("this player has already a pending invite")
+	ErrInviteNotExistis = errors.New("invite no longer exists")
+	ErrInvalidOperation = errors.New("invalid operation")
 )
 
 type Guild struct {
@@ -31,14 +41,14 @@ type Guild struct {
 
 func CreateGuild(guildName string, guildOwner *player.Player) (*Guild, error) {
 
-	params := CreateGuildParams{
-		guildName:  guildName,
-		guildOwner: guildOwner,
+	params := specs.CreateGuildParams{
+		GuildName:  guildName,
+		GuildOwner: guildOwner,
 	}
 
-	spec := NewGuildSpecification()
+	spec := specs.NewCreateGuildSpecification()
 
-	if err := spec(common.Base[CreateGuildParams]{Entity: &params}); err != nil {
+	if err := spec(common.Base[specs.CreateGuildParams]{Entity: &params}); err != nil {
 		return nil, err
 	}
 
@@ -56,37 +66,31 @@ func (g *Guild) InvitePlayer(sender *player.Player, guest *player.Player) (*Invi
 	g.Lock()
 	defer g.Unlock()
 
-	if len(g.invites)+1 >= MAX_INVITES || len(g.players)+1 > MAX_PLAYERS {
-		return nil, NewGuildError(ErrNoInviteAvailable, nil)
+	params := specs.NewMemberParams{
+		InviteSender:     sender,
+		GuestPlayer:      guest,
+		GuildMembers:     g.players,
+		GuildInvitesSize: len(g.invites),
 	}
 
-	//Check if sender is a guild member
-	if _, isMember := g.players[sender.ID()]; !isMember {
-		return nil, NewGuildError(ErrCannotInvite, nil)
-	}
+	spec := specs.NewGuildMemberSpecification()
 
-	//Check if guest is a guild member
-	if _, isMember := g.players[guest.ID()]; isMember {
-		return nil, NewGuildError(ErrPlayerIsAlreadyGuildMember, nil)
-	}
-
-	// Garante que o Player convidado não pertence a nenhuma outra guild.
-	if guest.GetCurrentGuild() != "" {
-		return nil, NewGuildError(ErrAnotherGuildMember, nil)
+	if err := spec(common.Base[specs.NewMemberParams]{Entity: &params}); err != nil {
+		return nil, err
 	}
 
 	if sender.Equals(g.manageBy.PlayerID) {
 		_, err := g.addPlayerUnsafe(guest)
 
 		if err != nil {
-			return nil, NewGuildError(ErrInvalidOperation, err)
+			return nil, fmt.Errorf("%w: %v", ErrInvalidOperation, err)
 		}
 
 		return nil, nil
 	}
 
 	if g.isInvitedPlayer(guest) {
-		return nil, NewGuildError(ErrAlreadyInvited, nil)
+		return nil, ErrAlreadyInvited
 	}
 
 	invite := NewInvite(guest.ID(), sender.ID(), g.ID())
@@ -102,13 +106,13 @@ func (g *Guild) RejectInvite(invite *Invite) (*Invite, error) {
 
 	//Check is valid invite
 	if _, isValid := g.invites[invite.ID()]; !isValid {
-		return nil, NewGuildError(ErrInviteNotExistis, nil)
+		return nil, ErrInviteNotExistis
 	}
 
 	err := g.invites[invite.ID()].reject()
 
 	if err != nil {
-		return nil, NewGuildError(ErrInvalidOperation, err)
+		return nil, fmt.Errorf("%w: %v", ErrInvalidOperation, err)
 	}
 
 	delete(g.invites, invite.ID())
@@ -122,13 +126,13 @@ func (g *Guild) CancelInvite(invite *Invite) (*Invite, error) {
 
 	//Check is valid invite
 	if _, isValid := g.invites[invite.ID()]; !isValid {
-		return nil, NewGuildError(ErrInviteNotExistis, nil)
+		return nil, ErrInviteNotExistis
 	}
 
 	err := g.invites[invite.ID()].cancel()
 
 	if err != nil {
-		return nil, NewGuildError(ErrInvalidOperation, err)
+		return nil, ErrInvalidOperation
 	}
 
 	delete(g.invites, invite.ID())
@@ -142,13 +146,13 @@ func (g *Guild) ApproveInvite(invite *Invite) (*Invite, error) {
 
 	//Check is valid invite
 	if _, isValid := g.invites[invite.ID()]; !isValid {
-		return nil, NewGuildError(ErrInviteNotExistis, nil)
+		return nil, ErrInviteNotExistis
 	}
 
 	err := g.invites[invite.ID()].approve()
 
 	if err != nil {
-		return nil, NewGuildError(ErrInvalidOperation, err)
+		return nil, ErrInvalidOperation
 	}
 
 	delete(g.invites, invite.ID())
@@ -161,16 +165,17 @@ func (g *Guild) AddPlayer(admin *player.Player, player *player.Player) (*Guild, 
 	g.Lock()
 	defer g.Unlock()
 
-	if len(g.players) >= MAX_PLAYERS {
-		return nil, NewGuildError(ErrGuildAlreadyFull, nil)
+	params := specs.NewMemberParams{
+		InviteSender:     admin,
+		GuestPlayer:      player,
+		GuildMembers:     g.players,
+		GuildInvitesSize: len(g.invites),
 	}
 
-	if _, isMember := g.players[player.ID()]; isMember {
-		return nil, NewGuildError(ErrPlayerIsAlreadyGuildMember, nil)
-	}
+	spec := specs.NewGuildMemberSpecification()
 
-	if player.GetCurrentGuild() != "" {
-		return nil, NewGuildError(ErrAnotherGuildMember, nil)
+	if err := spec(common.Base[specs.NewMemberParams]{Entity: &params}); err != nil {
+		return nil, err
 	}
 
 	player.UpdateCurrentGuild(g.ID())
@@ -185,7 +190,7 @@ func (g *Guild) RemovePlayer(admin *player.Player, player *player.Player) (*Guil
 	defer g.Unlock()
 
 	if _, isMember := g.players[player.ID()]; !isMember {
-		return nil, NewGuildError(ErrNotGuildMember, nil)
+		return nil, ErrNotGuildMember
 	}
 
 	delete(g.players, player.ID())
@@ -197,7 +202,7 @@ func (g *Guild) LeaveGuild(player *player.Player) (*Guild, error) {
 	defer g.Unlock()
 
 	if _, isMember := g.players[player.ID()]; !isMember {
-		return nil, NewGuildError(ErrNotGuildMember, nil)
+		return nil, ErrNotGuildMember
 	}
 
 	delete(g.players, player.ID())
@@ -205,15 +210,6 @@ func (g *Guild) LeaveGuild(player *player.Player) (*Guild, error) {
 }
 
 func (g *Guild) addPlayerUnsafe(player *player.Player) (*Guild, error) {
-
-	if len(g.players) >= MAX_PLAYERS {
-		return nil, NewGuildError(ErrGuildAlreadyFull, nil)
-	}
-
-	if _, isMember := g.players[player.ID()]; isMember {
-		return nil, NewGuildError(ErrPlayerIsAlreadyGuildMember, nil)
-	}
-
 	player.UpdateCurrentGuild(g.ID())
 	g.players[player.ID()] = player
 

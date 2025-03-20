@@ -1,11 +1,21 @@
 package vault
 
 import (
+	"errors"
+	"fmt"
 	"sync"
 
 	"github.com/vterry/guild-project-ddd/domain/item"
 	"github.com/vterry/guild-project-ddd/domain/player"
 	"github.com/vterry/guild-project-ddd/domain/vault/valueobjects"
+)
+
+var (
+	ErrInvalidGoldAmount  = errors.New("player does not have the current gold amount")
+	ErrNegativeGoldAmount = errors.New("gold amount cannot be negative")
+	ErrInvalidOperation   = errors.New("invalid operation")
+	ErrItemNotFound       = errors.New("item not found in vault")
+	ErrEmptyVault         = errors.New("vault's item is empty")
 )
 
 type Vault struct {
@@ -31,7 +41,7 @@ func (v *Vault) AddItem(i *item.Item, p *player.Player) error {
 	err := p.RetriveItem(i)
 
 	if err != nil {
-		return NewVaultError(ErrInvalidOperation, err)
+		return fmt.Errorf("%w: %v", ErrInvalidOperation, err)
 	}
 
 	v.Items = append(v.Items, i)
@@ -44,19 +54,19 @@ func (v *Vault) RetriveItem(i *item.Item, p *player.Player) error {
 	defer v.Unlock()
 
 	if len(v.Items) == 0 {
-		return NewVaultError(ErrEmptyVault, nil)
+		return ErrEmptyVault
 	}
 
 	for index, item := range v.Items {
 		if item.Equals(i.ItemID) {
 			if err := p.PickItem(i); err != nil {
-				return NewVaultError(ErrInvalidOperation, err)
+				return fmt.Errorf("%w: %v", ErrInvalidOperation, err)
 			}
 			v.Items = append(v.Items[:index], v.Items[index+1:]...)
 			return nil
 		}
 	}
-	return NewVaultError(ErrItemNotFound, nil)
+	return ErrItemNotFound
 }
 
 func (v *Vault) AddGold(goldAmount int, p *player.Player) error {
@@ -64,11 +74,11 @@ func (v *Vault) AddGold(goldAmount int, p *player.Player) error {
 	defer v.Unlock()
 
 	if goldAmount < 0 {
-		return NewVaultError(ErrNegativeGoldAmount, nil)
+		return ErrNegativeGoldAmount
 	}
 
 	if p.GetCurrentGold() < goldAmount {
-		return NewVaultError(ErrInvalidGoldAmount, nil)
+		return ErrInvalidGoldAmount
 	}
 
 	v.GoldAmount += goldAmount
@@ -82,11 +92,11 @@ func (v *Vault) GoldWithdraw(goldAmount int, p *player.Player) error {
 	defer v.Unlock()
 
 	if goldAmount < 0 {
-		return NewVaultError(ErrNegativeGoldAmount, nil)
+		return ErrNegativeGoldAmount
 	}
 
 	if v.GoldAmount < goldAmount {
-		return NewVaultError(ErrInvalidGoldAmount, nil)
+		return ErrInvalidGoldAmount
 	}
 
 	v.GoldAmount -= goldAmount

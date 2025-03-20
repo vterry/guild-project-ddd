@@ -18,10 +18,8 @@ var (
 
 func TestInvalidInitialization(t *testing.T) {
 	t.Run("test new player with invalid name", func(t *testing.T) {
-		var playerErr *PlayerError
 		_, err := NewPlayer("", valueobjects.Mage)
-		assert.ErrorAs(t, err, &playerErr)
-		assert.Contains(t, ErrInvalidNickname.Error(), playerErr.Error())
+		assert.ErrorIs(t, err, ErrInvalidNickname)
 	})
 }
 
@@ -71,11 +69,9 @@ func TestCashFunctions(t *testing.T) {
 	player := getPlayer()
 
 	t.Run("Test update cash up to negative value", func(t *testing.T) {
-		var playerErr *PlayerError
 		err := player.UpdateCash(-1)
-		assert.ErrorAs(t, err, &playerErr)
+		assert.ErrorIs(t, err, ErrNotEnoughCash)
 		assert.Equal(t, 0, player.GetCurrentCash())
-		assert.Contains(t, ErrNotEnoughCash.Error(), playerErr.Error())
 	})
 
 	t.Run("Test update cash up to positive value", func(t *testing.T) {
@@ -90,11 +86,9 @@ func TestGoldFunctions(t *testing.T) {
 	player := getPlayer()
 
 	t.Run("Test update gold up to negative value", func(t *testing.T) {
-		var playerErr *PlayerError
 		err := player.UpdateGold(-1)
-		assert.ErrorAs(t, err, &playerErr)
+		assert.ErrorIs(t, err, ErrNotEnoughGold)
 		assert.Equal(t, 0, player.GetCurrentGold())
-		assert.Contains(t, ErrNotEnoughGold.Error(), playerErr.Error())
 	})
 
 	t.Run("Test update gold up to positive value", func(t *testing.T) {
@@ -108,14 +102,11 @@ func TestIventoryFunctions(t *testing.T) {
 	playerItem := item.PickRandomItem()
 
 	t.Run("Test retrieve items from empty inventory", func(t *testing.T) {
-		var playerErr *PlayerError
-
 		t.Cleanup(resetPlayer)
 		player := getPlayer()
 
 		err := player.RetriveItem(item.PickRandomItem())
-		assert.ErrorAs(t, err, &playerErr)
-		assert.Contains(t, ErrEmptyInventory.Error(), playerErr.Error())
+		assert.ErrorIs(t, err, ErrEmptyInventory)
 	})
 
 	t.Run("Test adding items to player's inventory", func(t *testing.T) {
@@ -128,27 +119,21 @@ func TestIventoryFunctions(t *testing.T) {
 	})
 
 	t.Run("Test adding items to player's inventory with no space left", func(t *testing.T) {
-		var playerErr *PlayerError
-
 		t.Cleanup(resetPlayer)
 		player := getPlayer()
 		fullfilPlayerInventory(player)
 
 		err := player.PickItem(playerItem)
-		assert.ErrorAs(t, err, &playerErr)
-		assert.Contains(t, ErrNotEnoughSpace.Error(), playerErr.Error())
+		assert.ErrorIs(t, err, ErrNotEnoughSpace)
 
 	})
 	t.Run("Test retrieving unexisting item from player's inventory", func(t *testing.T) {
-		var playerErr *PlayerError
-
 		t.Cleanup(resetPlayer)
 		player := getPlayer()
 		player.PickItem(playerItem)
 
 		err := player.RetriveItem(item.PickRandomItem())
-		assert.ErrorAs(t, err, &playerErr)
-		assert.Contains(t, ErrItemNotFound.Error(), playerErr.Error())
+		assert.ErrorIs(t, err, ErrItemNotFound)
 	})
 
 	t.Run("Test retrieving existing item from player's inventory", func(t *testing.T) {

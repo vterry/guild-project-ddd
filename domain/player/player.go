@@ -1,6 +1,7 @@
 package player
 
 import (
+	"errors"
 	"sync"
 
 	"github.com/google/uuid"
@@ -9,6 +10,15 @@ import (
 )
 
 const MAX_ITEMS = 10
+
+var (
+	ErrInvalidNickname = errors.New("nickname must by between 4 and 15 characters")
+	ErrNotEnoughSpace  = errors.New("player has no space for more items")
+	ErrItemNotFound    = errors.New("item not found in player inventory")
+	ErrEmptyInventory  = errors.New("player has no items")
+	ErrNotEnoughGold   = errors.New("player has not enough gold")
+	ErrNotEnoughCash   = errors.New("player has not enough cash")
+)
 
 type Player struct {
 	valueobjects.PlayerID
@@ -23,7 +33,7 @@ type Player struct {
 
 func NewPlayer(nickname string, class valueobjects.Class) (*Player, error) {
 	if !isValidNickname(nickname) {
-		return nil, NewPlayerError(ErrInvalidNickname, nil)
+		return nil, ErrInvalidNickname
 	}
 
 	player := initializePlayer(nickname, class)
@@ -48,7 +58,7 @@ func (p *Player) UpdateCash(cash int) error {
 	nxtAmount := p.cash + cash
 
 	if nxtAmount <= 0 {
-		return NewPlayerError(ErrNotEnoughCash, nil)
+		return ErrNotEnoughCash
 	}
 
 	p.cash = nxtAmount
@@ -61,7 +71,7 @@ func (p *Player) UpdateGold(gold int) error {
 	nxtAmount := p.gold + gold
 
 	if nxtAmount <= 0 {
-		return NewPlayerError(ErrNotEnoughGold, nil)
+		return ErrNotEnoughGold
 	}
 
 	p.gold = nxtAmount
@@ -81,7 +91,7 @@ func (p *Player) PickItem(i *item.Item) error {
 	defer p.Unlock()
 
 	if len(p.items) >= MAX_ITEMS {
-		return NewPlayerError(ErrNotEnoughSpace, nil)
+		return ErrNotEnoughSpace
 	}
 	p.items = append(p.items, i)
 	return nil
@@ -92,7 +102,7 @@ func (p *Player) RetriveItem(i *item.Item) error {
 	defer p.Unlock()
 
 	if len(p.items) == 0 {
-		return NewPlayerError(ErrEmptyInventory, nil)
+		return ErrEmptyInventory
 	}
 
 	for index, item := range p.items {
@@ -100,7 +110,7 @@ func (p *Player) RetriveItem(i *item.Item) error {
 			p.items = append(p.items[:index], p.items[index+1:]...)
 			break
 		} else {
-			return NewPlayerError(ErrItemNotFound, nil)
+			return ErrItemNotFound
 		}
 	}
 	return nil

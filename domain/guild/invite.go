@@ -1,11 +1,16 @@
 package guild
 
 import (
+	"errors"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/vterry/guild-project-ddd/domain/common"
 	"github.com/vterry/guild-project-ddd/domain/guild/valueobjects"
+)
+
+var (
+	ErrInvalidInviteState = errors.New("invite has an invalid state")
 )
 
 type InviteStatus common.Status
