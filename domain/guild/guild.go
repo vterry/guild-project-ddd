@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/vterry/guild-project-ddd/domain/common"
 	"github.com/vterry/guild-project-ddd/domain/guild/specs"
 	"github.com/vterry/guild-project-ddd/domain/guild/valueobjects"
 	"github.com/vterry/guild-project-ddd/domain/player"
@@ -41,14 +40,7 @@ type Guild struct {
 
 func CreateGuild(guildName string, guildOwner *player.Player) (*Guild, error) {
 
-	params := specs.CreateGuildParams{
-		GuildName:  guildName,
-		GuildOwner: guildOwner,
-	}
-
-	spec := specs.NewCreateGuildSpecification()
-
-	if err := spec(common.Base[specs.CreateGuildParams]{Entity: &params}); err != nil {
+	if err := specs.ValidateGuildCreation(guildName, guildOwner); err != nil {
 		return nil, err
 	}
 
@@ -66,16 +58,7 @@ func (g *Guild) InvitePlayer(sender *player.Player, guest *player.Player) (*Invi
 	g.Lock()
 	defer g.Unlock()
 
-	params := specs.NewMemberParams{
-		InviteSender:     sender,
-		GuestPlayer:      guest,
-		GuildMembers:     g.players,
-		GuildInvitesSize: len(g.invites),
-	}
-
-	spec := specs.NewGuildMemberSpecification()
-
-	if err := spec(common.Base[specs.NewMemberParams]{Entity: &params}); err != nil {
+	if err := specs.ValidateNewMember(sender, guest, g.players, len(g.invites)); err != nil {
 		return nil, err
 	}
 
@@ -165,16 +148,7 @@ func (g *Guild) AddPlayer(admin *player.Player, player *player.Player) (*Guild, 
 	g.Lock()
 	defer g.Unlock()
 
-	params := specs.NewMemberParams{
-		InviteSender:     admin,
-		GuestPlayer:      player,
-		GuildMembers:     g.players,
-		GuildInvitesSize: len(g.invites),
-	}
-
-	spec := specs.NewGuildMemberSpecification()
-
-	if err := spec(common.Base[specs.NewMemberParams]{Entity: &params}); err != nil {
+	if err := specs.ValidateNewMember(admin, player, g.players, len(g.invites)); err != nil {
 		return nil, err
 	}
 

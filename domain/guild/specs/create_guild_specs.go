@@ -15,8 +15,17 @@ var (
 )
 
 type CreateGuildParams struct {
-	GuildName  string
-	GuildOwner *player.Player
+	guildName  string
+	guildOwner *player.Player
+}
+
+func ValidateGuildCreation(guildName string, guildOwner *player.Player) error {
+	params := CreateGuildParams{
+		guildName:  guildName,
+		guildOwner: guildOwner,
+	}
+	spec := NewCreateGuildSpecification()
+	return spec(common.Base[CreateGuildParams]{Entity: &params})
 }
 
 // Still reflective if for that example this implementation worth -- It feel It could be implemented in a very simple way
@@ -32,7 +41,7 @@ func NewCreateGuildSpecification() common.Specification[CreateGuildParams] {
 
 func NameNotEmptySpec() common.Specification[CreateGuildParams] {
 	return func(b common.Base[CreateGuildParams]) error {
-		guildName := b.Entity.GuildName
+		guildName := b.Entity.guildName
 		if len(guildName) < 4 || len(guildName) > 15 {
 			return ErrInvalidGuildName
 		}
@@ -42,7 +51,7 @@ func NameNotEmptySpec() common.Specification[CreateGuildParams] {
 
 func NotSpecialCharacterSpec() common.Specification[CreateGuildParams] {
 	return func(b common.Base[CreateGuildParams]) error {
-		if hasSpecialCharacters(b.Entity.GuildName) {
+		if hasSpecialCharacters(b.Entity.guildName) {
 			return ErrInvalidCharName
 		}
 
@@ -52,7 +61,7 @@ func NotSpecialCharacterSpec() common.Specification[CreateGuildParams] {
 
 func OwnerNotEmptySpec() common.Specification[CreateGuildParams] {
 	return func(b common.Base[CreateGuildParams]) error {
-		if b.Entity.GuildOwner == nil {
+		if b.Entity.guildOwner == nil {
 			return ErrMustInformGuidOwner
 		}
 		return nil
@@ -64,7 +73,7 @@ func NotBeingAnotherGuildMember() common.Specification[CreateGuildParams] {
 		OwnerNotEmptySpec(),
 		PlayerNotInAnotherGuildSpec(
 			func(p *CreateGuildParams) *player.Player {
-				return p.GuildOwner
+				return p.guildOwner
 			},
 		),
 	)

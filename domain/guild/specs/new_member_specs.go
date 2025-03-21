@@ -23,10 +23,26 @@ var (
 )
 
 type NewMemberParams struct {
-	InviteSender     *player.Player
-	GuestPlayer      *player.Player
-	GuildMembers     map[uuid.UUID]*player.Player
-	GuildInvitesSize int
+	inviteSender     *player.Player
+	guestPlayer      *player.Player
+	guildMembers     map[uuid.UUID]*player.Player
+	guildInvitesSize int
+}
+
+func ValidateNewMember(
+	inviteSender *player.Player,
+	guestPlayer *player.Player,
+	guildMembers map[uuid.UUID]*player.Player,
+	guildInvitesSize int,
+) error {
+	params := NewMemberParams{
+		inviteSender:     inviteSender,
+		guestPlayer:      guestPlayer,
+		guildMembers:     guildMembers,
+		guildInvitesSize: guildInvitesSize,
+	}
+	spec := NewGuildMemberSpecification()
+	return spec(common.Base[NewMemberParams]{Entity: &params})
 }
 
 // Still reflective if for that example this implementation worth -- It feel It could be implemented in a very simple way
@@ -65,7 +81,7 @@ func PlayerNotInAnotherGuildSpec[T any](
 
 func SenderMustBePartOfGuild() common.Specification[NewMemberParams] {
 	return func(b common.Base[NewMemberParams]) error {
-		if _, isMember := b.Entity.GuildMembers[b.Entity.InviteSender.ID()]; !isMember {
+		if _, isMember := b.Entity.guildMembers[b.Entity.inviteSender.ID()]; !isMember {
 			return ErrCannotInvite
 		}
 		return nil
@@ -74,7 +90,7 @@ func SenderMustBePartOfGuild() common.Specification[NewMemberParams] {
 
 func NotBeingAlreadyMember() common.Specification[NewMemberParams] {
 	return func(b common.Base[NewMemberParams]) error {
-		if _, isMember := b.Entity.GuildMembers[b.Entity.GuestPlayer.ID()]; isMember {
+		if _, isMember := b.Entity.guildMembers[b.Entity.guestPlayer.ID()]; isMember {
 			return ErrPlayerIsAlreadyGuildMember
 		}
 		return nil
@@ -83,13 +99,13 @@ func NotBeingAlreadyMember() common.Specification[NewMemberParams] {
 
 func GuestNotInAnotherGuildSpec() common.Specification[NewMemberParams] {
 	return PlayerNotInAnotherGuildSpec(
-		func(p *NewMemberParams) *player.Player { return p.GuestPlayer },
+		func(p *NewMemberParams) *player.Player { return p.guestPlayer },
 	)
 }
 
 func NoRommForNewSpaceInGuild() common.Specification[NewMemberParams] {
 	return func(b common.Base[NewMemberParams]) error {
-		if b.Entity.GuildInvitesSize+1 >= MAX_INVITES {
+		if b.Entity.guildInvitesSize+1 >= MAX_INVITES {
 			return ErrNoInviteAvailable
 		}
 		return nil
@@ -98,7 +114,7 @@ func NoRommForNewSpaceInGuild() common.Specification[NewMemberParams] {
 
 func NoLeftSpaceInGuild() common.Specification[NewMemberParams] {
 	return func(b common.Base[NewMemberParams]) error {
-		if len(b.Entity.GuildMembers)+1 >= MAX_PLAYERS {
+		if len(b.Entity.guildMembers)+1 >= MAX_PLAYERS {
 			return ErrGuildAlreadyFull
 		}
 		return nil
