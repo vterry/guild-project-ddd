@@ -66,7 +66,7 @@ The main idea here is try to reproduce a guild system, very common in many games
 
 To address all this requirements, I've drew this analysis class diagram:
 
-![image info](./pictures/analisys_diagram_start.png)
+![image info](./pictures/analisys_diagram_start_new.png)
 
 It's just the first approach to try to understand the main components and it's relations. It's not a Design Diagram.
 
