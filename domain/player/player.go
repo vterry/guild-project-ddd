@@ -22,7 +22,8 @@ var (
 
 type Player struct {
 	valueobjects.PlayerID
-	nickname     string
+	nickname string
+	// password     string // TODO
 	class        valueobjects.Class
 	items        []*item.Item
 	gold         int

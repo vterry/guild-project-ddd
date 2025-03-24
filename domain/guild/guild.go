@@ -62,16 +62,6 @@ func (g *Guild) InvitePlayer(sender *player.Player, guest *player.Player) (*Invi
 		return nil, err
 	}
 
-	if sender.Equals(g.manageBy.PlayerID) {
-		_, err := g.addPlayerUnsafe(guest)
-
-		if err != nil {
-			return nil, fmt.Errorf("%w: %v", ErrInvalidOperation, err)
-		}
-
-		return nil, nil
-	}
-
 	if g.isInvitedPlayer(guest) {
 		return nil, ErrAlreadyInvited
 	}
@@ -82,12 +72,27 @@ func (g *Guild) InvitePlayer(sender *player.Player, guest *player.Player) (*Invi
 	return invite, nil
 }
 
-// TODO - Jogadores convidados podem recusar o convite
-func (g *Guild) RejectInvite(invite *Invite) (*Invite, error) {
+func (g *Guild) LeaveGuild(player *player.Player) (*Guild, error) {
 	g.Lock()
 	defer g.Unlock()
 
-	//Check is valid invite
+	if _, isMember := g.players[player.ID()]; !isMember {
+		return nil, ErrNotGuildMember
+	}
+
+	delete(g.players, player.ID())
+	return g, nil
+}
+
+// TODO - Secure this using RBAC
+// The invitee can reject the invitation, but It don have access to this, so
+// I thinking to consider move this logic to a Domain Service where Player subscribe
+// and sent te reject operation by sending another event.
+
+func (g *Guild) rejectInvite(invite *Invite) (*Invite, error) {
+	g.Lock()
+	defer g.Unlock()
+
 	if _, isValid := g.invites[invite.ID()]; !isValid {
 		return nil, ErrInviteNotExistis
 	}
@@ -102,8 +107,11 @@ func (g *Guild) RejectInvite(invite *Invite) (*Invite, error) {
 	return invite, nil
 }
 
-// TODO - Garantir que somente GM ou Commanders podem cancelar convites
-func (g *Guild) CancelInvite(invite *Invite) (*Invite, error) {
+// TODO - Secure this using RBAC
+// Managers can cancel a Invite
+//Who sent the invite can cancel it
+
+func (g *Guild) cancelInvite(invite *Invite) (*Invite, error) {
 	g.Lock()
 	defer g.Unlock()
 
@@ -123,7 +131,10 @@ func (g *Guild) CancelInvite(invite *Invite) (*Invite, error) {
 	return invite, nil
 }
 
-func (g *Guild) ApproveInvite(invite *Invite) (*Invite, error) {
+// TODO - Secure this using RBAC
+// onlu managers can approve
+
+func (g *Guild) approveInvite(invite *Invite) (*Invite, error) {
 	g.Lock()
 	defer g.Unlock()
 
@@ -143,8 +154,10 @@ func (g *Guild) ApproveInvite(invite *Invite) (*Invite, error) {
 	return invite, nil
 }
 
-// TODO - Garantir que somente GM ou Commanders podem remover jogadores
-func (g *Guild) AddPlayer(admin *player.Player, player *player.Player) (*Guild, error) {
+// TODO - Secure this using RBAC
+// Only managers can add players
+
+func (g *Guild) addPlayer(admin *player.Player, player *player.Player) (*Guild, error) {
 	g.Lock()
 	defer g.Unlock()
 
@@ -158,8 +171,10 @@ func (g *Guild) AddPlayer(admin *player.Player, player *player.Player) (*Guild, 
 	return g, nil
 }
 
-// TODO - Garantir que somente GM ou Commanders podem remover jogadores
-func (g *Guild) RemovePlayer(admin *player.Player, player *player.Player) (*Guild, error) {
+// TODO - Secure this using RBAC
+// Only members can remove players
+
+func (g *Guild) removePlayer(admin *player.Player, player *player.Player) (*Guild, error) {
 	g.Lock()
 	defer g.Unlock()
 
@@ -168,25 +183,6 @@ func (g *Guild) RemovePlayer(admin *player.Player, player *player.Player) (*Guil
 	}
 
 	delete(g.players, player.ID())
-	return g, nil
-}
-
-func (g *Guild) LeaveGuild(player *player.Player) (*Guild, error) {
-	g.Lock()
-	defer g.Unlock()
-
-	if _, isMember := g.players[player.ID()]; !isMember {
-		return nil, ErrNotGuildMember
-	}
-
-	delete(g.players, player.ID())
-	return g, nil
-}
-
-func (g *Guild) addPlayerUnsafe(player *player.Player) (*Guild, error) {
-	player.UpdateCurrentGuild(g.ID())
-	g.players[player.ID()] = player
-
 	return g, nil
 }
 
@@ -211,4 +207,8 @@ func initializeGuild(guildName string, guildOwner *player.Player, players map[uu
 		players:   players,
 		invites:   make(map[uuid.UUID]*Invite, MAX_INVITES),
 	}
+}
+
+func (g *Guild) GetManager() *player.Player {
+	return g.manageBy
 }

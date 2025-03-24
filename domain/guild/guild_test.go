@@ -98,26 +98,48 @@ func TestGuildInvitationFuncions(t *testing.T) {
 	t.Run("Test GM inviting a player", func(t *testing.T) {
 		t.Cleanup(resetGuild)
 		guild := getGuild()
+		lenInvites := len(guild.invites)
 
 		guest, _ := player.NewPlayer("Guest", valueobjects.Ranger)
 		invite, err := guild.InvitePlayer(guildOwner, guest)
 
-		assert.Nil(t, invite)
-		assert.Nil(t, err)
+		_, test := guild.invites[invite.ID()]
 
-		_, isMember := guild.players[guest.ID()]
-		assert.True(t, isMember)
-		assert.True(t, guest.GetCurrentGuild() == guild.ID())
+		assert.True(t, test)
+
+		assert.NotErrorIs(t, err, ErrAlreadyInvited)
+		assert.Equal(t, lenInvites+1, len(guild.invites))
+
 	})
 
-	t.Run("Test guild's member inviting player", func(t *testing.T) {
+	t.Run("Test guild's member invite another", func(t *testing.T) {
+		t.Cleanup(resetGuild)
+		guild := getGuild()
+		lenInvites := len(guild.invites)
+
+		sender, _ := player.NewPlayer("Sender", valueobjects.Warrior)
+		guest, _ := player.NewPlayer("Guest", valueobjects.Ranger)
+		guild.addPlayer(guildOwner, sender)
+
+		invite, err := guild.InvitePlayer(sender, guest)
+
+		_, test := guild.invites[invite.ID()]
+
+		assert.True(t, test)
+
+		assert.NotErrorIs(t, err, ErrAlreadyInvited)
+		assert.Equal(t, lenInvites+1, len(guild.invites))
+
+	})
+
+	t.Run("Test guild's member inviting player with a pending invite", func(t *testing.T) {
 
 		t.Cleanup(resetGuild)
 		guild := getGuild()
 
 		sender, _ := player.NewPlayer("Sender", valueobjects.Warrior)
 		guest, _ := player.NewPlayer("Guest", valueobjects.Ranger)
-		guild.InvitePlayer(guildOwner, sender)
+		guild.addPlayer(guildOwner, sender)
 
 		invite, _ := guild.InvitePlayer(sender, guest)
 		_, test := guild.invites[invite.ID()]
@@ -153,8 +175,8 @@ func TestGuildInvitationFuncions(t *testing.T) {
 
 		sender, _ := player.NewPlayer("Sender", valueobjects.Warrior)
 		guest, _ := player.NewPlayer("Guest", valueobjects.Ranger)
-		guild.InvitePlayer(guildOwner, sender)
-		guild.InvitePlayer(guildOwner, guest)
+		guild.addPlayer(guildOwner, sender)
+		guild.addPlayer(guildOwner, guest)
 
 		_, err := guild.InvitePlayer(sender, guest)
 
@@ -170,7 +192,7 @@ func TestGuildInvitationFuncions(t *testing.T) {
 		sender, _ := player.NewPlayer("Sender", valueobjects.Warrior)
 		guest, _ := player.NewPlayer("Guest", valueobjects.Ranger)
 		guest.UpdateCurrentGuild("Sample-Guild-2025-03-16-203640-n3Gkxo6R6")
-		guild.InvitePlayer(guildOwner, sender)
+		guild.addPlayer(guildOwner, sender)
 
 		_, err := guild.InvitePlayer(sender, guest)
 
@@ -185,7 +207,7 @@ func TestGuildInvitationFuncions(t *testing.T) {
 
 		sender, _ := player.NewPlayer("Sender", valueobjects.Warrior)
 		guest, _ := player.NewPlayer("Guest", valueobjects.Ranger)
-		guild.InvitePlayer(guildOwner, sender)
+		guild.addPlayer(guildOwner, sender)
 
 		fullfilGuildInviteList(guild, sender)
 
@@ -201,11 +223,11 @@ func TestGuildInvitationFuncions(t *testing.T) {
 
 		sender, _ := player.NewPlayer("Sender", valueobjects.Warrior)
 		guest, _ := player.NewPlayer("Guest", valueobjects.Ranger)
-		guild.InvitePlayer(guildOwner, sender)
+		guild.addPlayer(guildOwner, sender)
 
 		fullfilGuildCapacity(guild)
 
-		_, err := guild.InvitePlayer(sender, guest)
+		_, err := guild.addPlayer(sender, guest)
 
 		assert.ErrorIs(t, err, specs.ErrGuildAlreadyFull)
 
@@ -224,7 +246,7 @@ func TestGuildInviteRejectFunctions(t *testing.T) {
 		guest, _ := player.NewPlayer("Guest", valueobjects.Ranger)
 		mockInvite := NewInvite(guest.ID(), sender.ID(), guild.ID())
 
-		_, err := guild.RejectInvite(mockInvite)
+		_, err := guild.rejectInvite(mockInvite)
 		assert.ErrorIs(t, err, ErrInviteNotExistis)
 
 	})
@@ -241,7 +263,7 @@ func TestGuildInviteRejectFunctions(t *testing.T) {
 		guild.invites[mockInvite.ID()] = mockInvite
 		mockInvite.approve()
 
-		_, err := guild.RejectInvite(mockInvite)
+		_, err := guild.rejectInvite(mockInvite)
 		assert.ErrorIs(t, err, ErrInvalidOperation, ErrInvalidInviteState)
 
 	})
@@ -251,7 +273,7 @@ func TestGuildInviteRejectFunctions(t *testing.T) {
 		guild := getGuild()
 
 		sender, _ := player.NewPlayer("Sender", valueobjects.Warrior)
-		guild.InvitePlayer(guildOwner, sender)
+		guild.addPlayer(guildOwner, sender)
 
 		guest, _ := player.NewPlayer("Guest", valueobjects.Ranger)
 		invite, err := guild.InvitePlayer(sender, guest)
@@ -262,7 +284,7 @@ func TestGuildInviteRejectFunctions(t *testing.T) {
 
 		lenInv := len(guild.invites)
 
-		_, rejErr := guild.RejectInvite(invite)
+		_, rejErr := guild.rejectInvite(invite)
 		assert.Nil(t, rejErr)
 		assert.NotEqual(t, lenInv, len(guild.invites))
 		assert.Equal(t, InviteStatus(common.Rejected), invite.CheckStatus())
@@ -281,7 +303,7 @@ func TestGuildInviteCancelFunctions(t *testing.T) {
 		guest, _ := player.NewPlayer("Guest", valueobjects.Ranger)
 		mockInvite := NewInvite(guest.ID(), sender.ID(), guild.ID())
 
-		_, err := guild.CancelInvite(mockInvite)
+		_, err := guild.cancelInvite(mockInvite)
 		assert.ErrorIs(t, err, ErrInviteNotExistis)
 
 	})
@@ -297,7 +319,7 @@ func TestGuildInviteCancelFunctions(t *testing.T) {
 		guild.invites[mockInvite.ID()] = mockInvite
 		mockInvite.approve()
 
-		_, err := guild.CancelInvite(mockInvite)
+		_, err := guild.cancelInvite(mockInvite)
 		assert.ErrorIs(t, err, ErrInvalidOperation, ErrInvalidInviteState)
 
 	})
@@ -307,7 +329,7 @@ func TestGuildInviteCancelFunctions(t *testing.T) {
 		guild := getGuild()
 
 		sender, _ := player.NewPlayer("Sender", valueobjects.Warrior)
-		guild.InvitePlayer(guildOwner, sender)
+		guild.addPlayer(guildOwner, sender)
 
 		guest, _ := player.NewPlayer("Guest", valueobjects.Ranger)
 		invite, err := guild.InvitePlayer(sender, guest)
@@ -318,7 +340,7 @@ func TestGuildInviteCancelFunctions(t *testing.T) {
 
 		lenInv := len(guild.invites)
 
-		_, rejErr := guild.CancelInvite(invite)
+		_, rejErr := guild.cancelInvite(invite)
 		assert.Nil(t, rejErr)
 		assert.NotEqual(t, lenInv, len(guild.invites))
 		assert.Equal(t, InviteStatus(common.Canceled), invite.CheckStatus())
@@ -336,7 +358,7 @@ func TestGuildInviteApproveFunctions(t *testing.T) {
 		guest, _ := player.NewPlayer("Guest", valueobjects.Ranger)
 		mockInvite := NewInvite(guest.ID(), sender.ID(), guild.ID())
 
-		_, err := guild.ApproveInvite(mockInvite)
+		_, err := guild.approveInvite(mockInvite)
 		assert.ErrorIs(t, err, ErrInviteNotExistis)
 
 	})
@@ -352,7 +374,7 @@ func TestGuildInviteApproveFunctions(t *testing.T) {
 		guild.invites[mockInvite.ID()] = mockInvite
 		mockInvite.reject()
 
-		_, err := guild.ApproveInvite(mockInvite)
+		_, err := guild.approveInvite(mockInvite)
 		assert.ErrorIs(t, err, ErrInvalidOperation, ErrInvalidInviteState)
 
 	})
@@ -362,7 +384,7 @@ func TestGuildInviteApproveFunctions(t *testing.T) {
 		guild := getGuild()
 
 		sender, _ := player.NewPlayer("Sender", valueobjects.Warrior)
-		guild.InvitePlayer(guildOwner, sender)
+		guild.addPlayer(guildOwner, sender)
 
 		guest, _ := player.NewPlayer("Guest", valueobjects.Ranger)
 		invite, err := guild.InvitePlayer(sender, guest)
@@ -373,7 +395,7 @@ func TestGuildInviteApproveFunctions(t *testing.T) {
 
 		lenInv := len(guild.invites)
 
-		_, rejErr := guild.ApproveInvite(invite)
+		_, rejErr := guild.approveInvite(invite)
 		assert.Nil(t, rejErr)
 		assert.NotEqual(t, lenInv, len(guild.invites))
 		assert.Equal(t, InviteStatus(common.Approved), invite.CheckStatus())
@@ -389,7 +411,7 @@ func TestAddToGuildFunctions(t *testing.T) {
 		mockPlayer, _ := player.NewPlayer("MockPlayer", valueobjects.Mage)
 		mockPlayer.UpdateCurrentGuild("Sample-Guild-2025-03-16-203640-n3Gkxo6R6")
 
-		_, err := guild.AddPlayer(guildOwner, mockPlayer)
+		_, err := guild.addPlayer(guildOwner, mockPlayer)
 		assert.ErrorIs(t, err, specs.ErrAnotherGuildMember)
 	})
 
@@ -398,9 +420,9 @@ func TestAddToGuildFunctions(t *testing.T) {
 		guild := getGuild()
 
 		guest, _ := player.NewPlayer("MockPlayer", valueobjects.Mage)
-		guild.InvitePlayer(guildOwner, guest)
+		guild.addPlayer(guildOwner, guest)
 
-		_, err := guild.AddPlayer(guildOwner, guest)
+		_, err := guild.addPlayer(guildOwner, guest)
 		assert.ErrorIs(t, err, specs.ErrPlayerIsAlreadyGuildMember)
 	})
 
@@ -412,7 +434,7 @@ func TestAddToGuildFunctions(t *testing.T) {
 
 		fullfilGuildCapacity(guild)
 
-		_, err := guild.AddPlayer(guildOwner, guest)
+		_, err := guild.addPlayer(guildOwner, guest)
 		assert.ErrorIs(t, err, specs.ErrGuildAlreadyFull)
 	})
 
@@ -422,7 +444,7 @@ func TestAddToGuildFunctions(t *testing.T) {
 
 		guest, _ := player.NewPlayer("MockPlayer", valueobjects.Mage)
 
-		_, err := guild.AddPlayer(guildOwner, guest)
+		_, err := guild.addPlayer(guildOwner, guest)
 		assert.Nil(t, err)
 
 		_, isMember := guild.players[guest.ID()]
@@ -438,7 +460,7 @@ func TestRemoveFromGuildFunctions(t *testing.T) {
 		mockPlayer, _ := player.NewPlayer("MockPlayer", valueobjects.Mage)
 		mockPlayer.UpdateCurrentGuild("Sample-Guild-2025-03-16-203640-n3Gkxo6R6")
 
-		_, err := guild.RemovePlayer(guildOwner, mockPlayer)
+		_, err := guild.removePlayer(guildOwner, mockPlayer)
 		assert.ErrorIs(t, err, ErrNotGuildMember)
 	})
 
@@ -447,10 +469,10 @@ func TestRemoveFromGuildFunctions(t *testing.T) {
 		guild := getGuild()
 
 		guest, _ := player.NewPlayer("MockPlayer", valueobjects.Mage)
-		guild.AddPlayer(guildOwner, guest)
+		guild.addPlayer(guildOwner, guest)
 		lenPlayer := len(guild.players)
 
-		_, err := guild.RemovePlayer(guildOwner, guest)
+		_, err := guild.removePlayer(guildOwner, guest)
 		assert.Nil(t, err)
 
 		_, isMember := guild.players[guest.ID()]
@@ -476,7 +498,7 @@ func TestLeaveFromGuildFunctions(t *testing.T) {
 		guild := getGuild()
 
 		guest, _ := player.NewPlayer("MockPlayer", valueobjects.Mage)
-		guild.AddPlayer(guildOwner, guest)
+		guild.addPlayer(guildOwner, guest)
 		lenPlayer := len(guild.players)
 
 		_, err := guild.LeaveGuild(guest)
@@ -496,7 +518,7 @@ func TestLeaveGuildFunctions(t *testing.T) {
 		mockPlayer, _ := player.NewPlayer("MockPlayer", valueobjects.Mage)
 		mockPlayer.UpdateCurrentGuild("Sample-Guild-2025-03-16-203640-n3Gkxo6R6")
 
-		_, err := guild.RemovePlayer(guildOwner, mockPlayer)
+		_, err := guild.removePlayer(guildOwner, mockPlayer)
 		assert.ErrorIs(t, err, ErrNotGuildMember)
 	})
 
@@ -505,10 +527,10 @@ func TestLeaveGuildFunctions(t *testing.T) {
 		guild := getGuild()
 
 		guest, _ := player.NewPlayer("MockPlayer", valueobjects.Mage)
-		guild.AddPlayer(guildOwner, guest)
+		guild.addPlayer(guildOwner, guest)
 		lenPlayer := len(guild.players)
 
-		_, err := guild.RemovePlayer(guildOwner, guest)
+		_, err := guild.removePlayer(guildOwner, guest)
 		assert.Nil(t, err)
 
 		_, isMember := guild.players[guest.ID()]
@@ -529,7 +551,7 @@ func fullfilGuildCapacity(g *Guild) {
 	for i := 0; i < MAX_PLAYERS; i++ {
 		name := fmt.Sprintf("%s%d", "Player", i)
 		player, _ := player.NewPlayer(name, valueobjects.Mage)
-		g.InvitePlayer(guildOwner, player)
+		g.addPlayer(guildOwner, player)
 	}
 }
 
