@@ -1,122 +1,51 @@
 # Guild Project DDD
 
-## Why am I doing this?
+## Project Overview
 
-It’s been a while since I transitioned from being a developer to managing development teams. Over these three years, I’ve focused on strengthening my skills in people management, leadership, and understanding how to best perform in this role.
+The objetive of this project is design a kind of guild system, popular in rpg games, using Go and trying to put DDD practices as long the project evolves.
+Trying to push my understand of DDD, I'm focus to get maximum modularity, where each module will acting as a separated microservices.
+I believe this approach will help me face some problems, like authentication, consistency and other design problems to think and find way to address it.
 
-Growing into this new world has been enjoyable, but in some ways, I miss getting my hands dirty—writing code and learning new things.
+## High Level Architecture
 
-The idea behind this project is to use some of my free time to study and explore technical topics without deadlines, using it as a playground for exploring things I’ve always wanted to learn or topics I’ve only had superficial knowledge of.
+![image info](./pictures/guild-overview.png)
 
-## What I want to explore
+### Key Modules
 
-Well, from start I want to re(read) some technical books and try put every concept in a orthodox way to reflect on trade offs.
+- Auth Server - Responsible to handle authentication and user session. In the future I want to connect it to a Api Gateway to centralize the authentication/authorization concerns. I also want to change this to a prebuilt tool like Keycloack and see how these will impact my system design.
 
-I also want to learn a new programming language. I chose go because I though it will be fun :D
+- Player = Responsible to handle all players concerns. Here we want to be able to create new players. Here I intent to explore data synchronization problem where, wherenever a player is created, it should have a Login in Auth Server. I want to explore a sync approach, and an async approach using domain events and see the challenge to archived the small latency possible to get eventual consistency.
 
-For this project, I've prepare a list of books. Some I've already read, other were recommended by friends but I never read and now its time to read them all.
+- Guild - Responsible to handle all guild concerns. Here we want to be able to create guild, invite others player to our guild, promote, demote or kick players. Players will be able to donate gold and cash to a Guild and we want to track those actions to create a report of transactions.
 
-Books:
+- Vault - Responsible to handle all vault concerns. Although a Vault have its own life cycle, to be consistent it should communicate with Player and Guild module. Like in the Player-Login problem, I want to explore both sync and async approachs, using domain events and push further my understand about Domain Services.
 
-- ~~Go The Programming Language~~
-- Implementing DDD by Vernon <- _reading_
-- The Pragmatic Programmer - 20th Anniversary Edition
-- Refactoring 1st & 2nd edition
-- Agile Software Development
-- Designing Object Oriented C++ Applications Using The Booch Method
-- Enterprise Integration Patterns
-- Patterns of Enterprise Application Architecture
-- Clean Architecture
-- Software Architecture - Hard Parts
-- Build Evolutionary Architectures
-- DDD by Evans
-- Functional and Reactive Domain Modeling
-- Design Data Intensive Applications
-- Web Application Security: Exploitation and Countermeasures for Modern Web Applications
-- Grokking Web Application Security
+### Key Features to explore in future
 
-Yeah ... I's a lot of book, but time isnt a problem here.
+- Api Gateway
+- Service Discovery
+- Rate Limit
+- Service Mesh
+- Circuit Breaker
 
-**It is a small project, is it worth that effort and maybe future overengineer?** Surely not, but the object here is just get hands dirty and evaluate trade off.
+## Progress
 
-## About the Guild Project
+### Auth Server
 
-The main idea here is try to reproduce a guild system, very common in many games. The main "requirements" are:
+**Status:** _in progress_
 
-- Create a guild. (obviously)
-- A Guild must have a Guild Master (GM), a Vault to store items and Gold, and a especial stash call Treasure. The Treasure is responsible to store an special currency which will be donated by guild members. Every donation must be approved by a GM (only)
-- To join the guild, a player can be invited by other player, or be added directly by the Guild Master.
-- To make it clear, invite sent by a GM, the invitee will be automatic add to the Guild.
-- The Guild has maximum capacity up to 50 players and 50 pending invites
-- Along side the GM, some aspects of the Guild can by managed by another role called Guild Commander (GC).
-- GC are regular members promoted by a GM.
-- Only a GM can promote players to GC or demote them.
-- Both GM and GC can remove players from Guild
-- Both GM and GC can add new players to Guild.
-- To make it clear, invites sent by GC, the invitee also will be automatic add to the Guild.
-- GC cannot remove other GC nor demote them
-- GC cannot promote players to GC
-- Player cannot remote nor add players
-- Player are able to leave your current guild
-- Regular guild members can invite others players
-- Invites can be approved or reject by GM or GC
-- Invites can be cancelled by who send
-- Every member can store items and gold on Guild's Vault.
-- For now, vault doesnt have a maximum capacity
+**Features Available:**
 
-To address all this requirements, I've drew this analysis class diagram:
+- Create a Login
+- Login
+- Renew Token and Session
+- Revoke session
 
-![image info](./pictures/analisys_diagram_start_new.png)
+**To Do List:**
 
-It's just the first approach to try to understand the main components and it's relations. It's not a Design Diagram.
-
-## What do we have so far?
-
-As I progressed reading Go The Programming language and consuming other content about Go, I made this firts domain implementation.
-
-```
-domain/
-├── common/
-    └── base_error.go
-    └── base_id.go
-    └── status.go
-├── guild/
-    └── valueobjects/
-        └── guild_id.go
-        └── invite_id.go
-    └── error.go
-    └── guild_test.go
-    └── guild.go //aggrated root
-    └── invite.go
-├── item/
-    └── valueobjects/
-        └── item_id.go
-    └── error.go
-    └── item_test.go
-    └── item.go
-├── player/
-    └── valueobjects/
-        └── class.go
-        └── player_id.go
-    └── error.go
-    └── player_test.go
-    └── player.go
-├── treasure/
-    └── valueobjects/
-        └── donation_id.go
-        └── treasure_id.go
-    └── donation.go
-    └── treasure.go
-```
-
-During this process I realized that I need to add new entities (classes) into my first diagram to make things works. I also adding new rules and validations.
-
-Donation features will be implement after a complete foundation.
-
-## Next Step
-
-Starting implementing the Domain Service layer:
-
-![image info](./pictures/high_level_arch.png)
-
-Here I want to read Implementing DDD by Vernon and explore concepts like Domain Services, Repositories, Domain Events and how can I take advantage of them to implement Donation's Features and create a kind of trace log transctions of items and gold in vault
+- [x] Create basic structure
+- [ ] Change database mocks to "faker"approach and improve unit tests consistency
+- [ ] Improve renew token business logic
+- [ ] Create an Auth Middleware to protect /revoke and /renew endpoints
+- [ ] Write tests to app services and route
+- [ ] Write tests to infra layer components

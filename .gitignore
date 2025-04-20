@@ -16,6 +16,8 @@ _.so
 
 \*.test
 
+domain-deprecated/
+
 # Output of the go coverage tool, specifically when used with LiteIDE
 
 *.out
