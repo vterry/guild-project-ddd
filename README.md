@@ -20,14 +20,6 @@ I believe this approach will help me face some problems, like authentication, co
 
 - Vault - Responsible to handle all vault concerns. Although a Vault have its own life cycle, to be consistent it should communicate with Player and Guild module. Like in the Player-Login problem, I want to explore both sync and async approachs, using domain events and push further my understand about Domain Services.
 
-### Key Features to explore in future
-
-- Api Gateway
-- Service Discovery
-- Rate Limit
-- Service Mesh
-- Circuit Breaker
-
 ## Progress
 
 ### Auth Server
@@ -49,3 +41,60 @@ I believe this approach will help me face some problems, like authentication, co
 - [ ] Create an Auth Middleware to protect /revoke and /renew endpoints
 - [ ] Write tests to app services and route
 - [ ] Write tests to infra layer components
+
+### Player
+
+**Status:** _backlog_
+
+**Features Available:**
+
+- Create Player
+- Delete Player
+- Manage Player inventory - (add and retrive gold and itens)
+
+**To Do List:**
+
+- [ ] Create basic structure
+
+### Guild
+
+**Status:** _backlog_
+
+**Features Available:**
+
+- Create a guild
+- Delete a guild
+- Invite players
+- Add players
+- Remove players
+- Leave guild
+- Promote players
+- Demote player
+
+**To Do List:**
+
+- [ ] Create basic structure
+
+### Vault
+
+**Status:** _backlog_
+
+**Features Available:**
+
+- Create a vault
+- Deleta a vault
+- Add/Retrieve items to a vault
+
+_Personal thoughts: Both player and guild will have a vault, so here we will have a Authorization problem between diferent domains to handle_
+
+**To Do List:**
+
+- [ ] Create basic structure
+
+### Key Features to explore in future
+
+- Api Gateway
+- Service Discovery
+- Rate Limit
+- Service Mesh
+- Circuit Breaker
