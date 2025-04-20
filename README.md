@@ -93,8 +93,8 @@ _Personal thoughts: Both player and guild will have a vault, so here we will hav
 
 ### Key Features to explore in future
 
-- Api Gateway
-- Service Discovery
-- Rate Limit
-- Service Mesh
-- Circuit Breaker
+- **API Gateway** - Central entry point for request routing, composition, and security
+- **Service Discovery** - Dynamic registration and lookup of distributed services
+- **Rate Limiting** - Traffic control to prevent overload and ensure fair usage
+- **Service Mesh** - Managed service-to-service communication with observability and security
+- **Circuit Breaker** - Failure containment pattern to prevent cascading system failures
