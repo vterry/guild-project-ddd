@@ -38,7 +38,7 @@ func TestAuthService(t *testing.T) {
 		hashedPass, _ := password.HashePassword("password")
 		userLogin, err := login.CreateLogin(valueobjects.NewUserID(userId), hashedPass)
 		assert.NoError(t, err)
-		loginRepo.On("FindLoginByUserID", valueobjects.NewUserID(userId)).Return(userLogin, nil)
+		loginRepo.On("FindLoginByUserId", valueobjects.NewUserID(userId)).Return(userLogin, nil)
 
 		sessionService.On("CreateNewSession", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&session.Session{}, nil)
 
@@ -73,7 +73,7 @@ func TestAuthService(t *testing.T) {
 		authService := NewAuthService(sessionService, loginRepo)
 
 		userId := uuid.New()
-		loginRepo.On("FindLoginByUserID", valueobjects.NewUserID(userId)).Return(nil, errors.New("user not found"))
+		loginRepo.On("FindLoginByUserId", valueobjects.NewUserID(userId)).Return(nil, errors.New("user not found"))
 
 		result, err := authService.LoginIn(userId.String(), "password")
 		assert.Nil(t, result)
@@ -91,7 +91,7 @@ func TestAuthService(t *testing.T) {
 		userId := uuid.New()
 		userLogin, err := login.CreateLogin(valueobjects.NewUserID(userId), "password")
 		assert.NoError(t, err)
-		loginRepo.On("FindLoginByUserID", valueobjects.NewUserID(userId)).Return(userLogin, nil)
+		loginRepo.On("FindLoginByUserId", valueobjects.NewUserID(userId)).Return(userLogin, nil)
 
 		result, err := authService.LoginIn(userId.String(), "password")
 		assert.Nil(t, result)
@@ -110,7 +110,7 @@ func TestAuthService(t *testing.T) {
 		hashedPass, _ := password.HashePassword("password")
 		userLogin, err := login.CreateLogin(valueobjects.NewUserID(userId), hashedPass)
 		assert.NoError(t, err)
-		loginRepo.On("FindLoginByUserID", valueobjects.NewUserID(userId)).Return(userLogin, nil)
+		loginRepo.On("FindLoginByUserId", valueobjects.NewUserID(userId)).Return(userLogin, nil)
 
 		sessionService.On("CreateNewSession", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil, errors.New("failure on session's creation"))
 
@@ -126,7 +126,7 @@ func TestAuthService(t *testing.T) {
 		authService := NewAuthService(sessionService, loginRepo)
 
 		userId := uuid.New()
-		loginRepo.On("FindLoginByUserID", valueobjects.NewUserID(userId)).Return(nil, errors.New("userid not found"))
+		loginRepo.On("FindLoginByUserId", valueobjects.NewUserID(userId)).Return(nil, errors.New("userid not found"))
 		loginRepo.On("Save", mock.AnythingOfType("login.Login")).Return(&login.Login{}, nil)
 
 		err := authService.CreateUserLogin(userId.String(), "password")
@@ -151,7 +151,7 @@ func TestAuthService(t *testing.T) {
 		authService := NewAuthService(sessionService, loginRepo)
 
 		userId := uuid.New()
-		loginRepo.On("FindLoginByUserID", valueobjects.NewUserID(userId)).Return(nil, nil)
+		loginRepo.On("FindLoginByUserId", valueobjects.NewUserID(userId)).Return(nil, nil)
 
 		err := authService.CreateUserLogin(userId.String(), "password")
 		assert.NotNil(t, err)
@@ -165,7 +165,7 @@ func TestAuthService(t *testing.T) {
 		authService := NewAuthService(sessionService, loginRepo)
 
 		userId := uuid.New()
-		loginRepo.On("FindLoginByUserID", valueobjects.NewUserID(userId)).Return(nil, errors.New("userid not found"))
+		loginRepo.On("FindLoginByUserId", valueobjects.NewUserID(userId)).Return(nil, errors.New("userid not found"))
 		loginRepo.On("Save", mock.AnythingOfType("login.Login")).Return(nil, errors.New("failure to save"))
 
 		err := authService.CreateUserLogin(userId.String(), "password")
@@ -187,7 +187,7 @@ func (m *mockLoginRepository) Save(inputLogin login.Login) error {
 	return args.Error(1)
 }
 
-func (m *mockLoginRepository) FindLoginByUserID(userID valueobjects.UserID) (*login.Login, error) {
+func (m *mockLoginRepository) FindLoginByUserId(userID valueobjects.UserID) (*login.Login, error) {
 	args := m.Called(userID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)

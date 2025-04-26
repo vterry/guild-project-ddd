@@ -58,7 +58,7 @@ func (r *LoginRepository) Save(loginObj login.Login) error {
 	return nil
 }
 
-func (r *LoginRepository) FindLoginByUserID(userId valueobjects.UserID) (*login.Login, error) {
+func (r *LoginRepository) FindLoginByUserId(userId valueobjects.UserID) (*login.Login, error) {
 	loginDao := dao.Login{}
 	filter := bson.D{{Key: "userId", Value: userId.ID().String()}}
 

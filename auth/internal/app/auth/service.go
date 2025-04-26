@@ -2,6 +2,7 @@ package auth
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"time"
 
@@ -38,7 +39,7 @@ func (a *AuthService) LoginIn(userId string, pass string) (*types.LoginResult, e
 		return nil, fmt.Errorf("invalid user id format: %w", err)
 	}
 
-	login, err := a.loginRepo.FindLoginByUserID(valueobjects.NewUserID(parsedId))
+	login, err := a.loginRepo.FindLoginByUserId(valueobjects.NewUserID(parsedId))
 	if err != nil {
 		return nil, fmt.Errorf("invalid userid or password")
 	}
@@ -62,7 +63,7 @@ func (a *AuthService) LoginIn(userId string, pass string) (*types.LoginResult, e
 		return nil, fmt.Errorf("failed to create CSRF Token: %w", err)
 	}
 
-	expiresAt := accessClaim.ExpiresAt.Time
+	expiresAt := refreshClaim.ExpiresAt.Time
 
 	newSession, err := a.sessionService.CreateNewSession(valueobjects.NewUserID(parsedId), session.JWTToken(jwtToken), session.JWTToken(refreshToken), session.CSRFToken(csrfToken), expiresAt)
 	if err != nil {
@@ -85,7 +86,7 @@ func (a *AuthService) CreateUserLogin(userId string, pass string) error {
 		return fmt.Errorf("invalid user id format: %w", err)
 	}
 
-	_, err = a.loginRepo.FindLoginByUserID(valueobjects.NewUserID(parsedId))
+	_, err = a.loginRepo.FindLoginByUserId(valueobjects.NewUserID(parsedId))
 	if err == nil {
 		return fmt.Errorf("user with id %s already exists", userId)
 	}
@@ -107,31 +108,37 @@ func (a *AuthService) CreateUserLogin(userId string, pass string) error {
 	return nil
 }
 
-func (a *AuthService) Revoke(sessionId session.SessionID) error {
-	return a.sessionService.RevokeSession(sessionId)
-}
-
-func (a *AuthService) Renew(userSessionId session.SessionID, refreshToken string) (*types.LoginResult, error) {
+func (a *AuthService) Renew(reqSessionId string, refreshToken string) (*types.LoginResult, error) {
 	accessDuration := time.Second * time.Duration(config.Envs.AccessDuration)
 	refreshDuration := time.Second * time.Duration(config.Envs.RefreshTokenDuration)
 
-	userSession, err := a.sessionService.FindSessionById(userSessionId)
+	sessionId, err := uuid.Parse(reqSessionId)
 	if err != nil {
-		return nil, fmt.Errorf("failed to renew session: %v", err)
+		return nil, fmt.Errorf("invalid session id format: %w", err)
+	}
+
+	userSession, err := a.sessionService.FindSessionById(session.NewSessionID(sessionId))
+	if err != nil {
+		return nil, fmt.Errorf("failed to renew session: %w", err)
 	}
 
 	refreshTokenClaims, err := token.ValidateJWT(refreshToken)
 	if err != nil {
-		return nil, fmt.Errorf("error verifying token: %v", err)
+		return nil, fmt.Errorf("error verifying token: %w", err)
+	}
+
+	if refreshTokenClaims.ExpiresAt.Before(time.Now()) {
+		log.Println(refreshTokenClaims.ExpiresAt)
+		return nil, fmt.Errorf("refresh token is expired")
 	}
 
 	userId, err := uuid.Parse(refreshTokenClaims.UserId)
 	if err != nil {
-		return nil, fmt.Errorf("failed to recovery user id from claims: %v", err)
+		return nil, fmt.Errorf("failed to recovery user id from claims: %w", err)
 	}
 
 	if !userSession.UserId().Equals(valueobjects.NewUserID(userId)) {
-		return nil, fmt.Errorf("invalid session/refresh token: %v", err)
+		return nil, fmt.Errorf("invalid session/refresh token")
 	}
 
 	newjwtToken, accessClaim, err := token.GenerateJWTToken(secret, userSession.UserId().ID().String(), accessDuration)
@@ -144,11 +151,11 @@ func (a *AuthService) Renew(userSessionId session.SessionID, refreshToken string
 		return nil, fmt.Errorf("failed to create Refresh Token: %w", err)
 	}
 
-	newExpiresAt := accessClaim.ExpiresAt.Time
+	newExpiresAt := refreshClaim.ExpiresAt.Time
 
 	newSession, err := a.sessionService.RenewSession(userSession.SessionID, session.JWTToken(newjwtToken), session.JWTToken(newRefreshToken), newExpiresAt)
 	if err != nil {
-		return nil, fmt.Errorf("failed to renew session id: %v - %w", userSession.SessionID, err)
+		return nil, fmt.Errorf("failed to renew session id: %v - %w", userSession.SessionID.ID(), err)
 	}
 
 	return &types.LoginResult{
@@ -159,6 +166,15 @@ func (a *AuthService) Renew(userSessionId session.SessionID, refreshToken string
 		AccessTokenExpiresAt:  accessClaim.ExpiresAt.Time,
 		RefreshTokenExpiresAt: refreshClaim.ExpiresAt.Time,
 	}, nil
+}
+
+func (a *AuthService) Revoke(reqSessionId string) error {
+	sessionId, err := uuid.Parse(reqSessionId)
+	if err != nil {
+		return fmt.Errorf("invalid session id format: %w", err)
+	}
+
+	return a.sessionService.RevokeSession(session.NewSessionID(sessionId))
 }
 
 func (a *AuthService) GetAuthCookies(result *types.LoginResult) []*http.Cookie {

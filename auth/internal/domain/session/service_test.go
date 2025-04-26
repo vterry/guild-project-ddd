@@ -35,7 +35,7 @@ func TestSessionService(t *testing.T) {
 		userId := valueobjects.NewUserID(uuid.New())
 		userLogin, err := login.CreateLogin(userId, "password")
 		assert.NoError(t, err)
-		loginRepo.On("FindLoginByUserID", userId).Return(userLogin, nil)
+		loginRepo.On("FindLoginByUserId", userId).Return(userLogin, nil)
 
 		sessionRepo.On("Save", mock.AnythingOfType("session.Session")).Return(&Session{}, nil)
 
@@ -54,7 +54,7 @@ func TestSessionService(t *testing.T) {
 		userId := valueobjects.NewUserID(uuid.New())
 		userLogin, err := login.CreateLogin(userId, "password")
 		assert.NoError(t, err)
-		loginRepo.On("FindLoginByUserID", userId).Return(userLogin, nil)
+		loginRepo.On("FindLoginByUserId", userId).Return(userLogin, nil)
 
 		sessionRepo.On("Save", mock.AnythingOfType("session.Session")).Return(nil, ErrWhileCreatingSession)
 
@@ -69,7 +69,7 @@ func TestSessionService(t *testing.T) {
 		service := NewSessionService(sessionRepo, loginRepo)
 
 		userId := valueobjects.NewUserID(uuid.New())
-		loginRepo.On("FindLoginByUserID", mock.Anything).Return(nil, nil)
+		loginRepo.On("FindLoginByUserId", mock.Anything).Return(nil, nil)
 
 		result, err := service.CreateNewSession(userId, "jwt-token", "renew-token", "csrf-token", time.Now().Add(24*time.Hour))
 		assert.Nil(t, result)
@@ -85,7 +85,7 @@ func TestSessionService(t *testing.T) {
 		userId := valueobjects.NewUserID(uuid.New())
 		userLogin, err := login.CreateLogin(userId, "password")
 		assert.NoError(t, err)
-		loginRepo.On("FindLoginByUserID", userId).Return(userLogin, nil)
+		loginRepo.On("FindLoginByUserId", userId).Return(userLogin, nil)
 
 		result, err := service.CreateNewSession(userId, "", "", "", time.Time{})
 		assert.Nil(t, result)
@@ -159,8 +159,11 @@ func TestSessionService(t *testing.T) {
 
 		sessionRepo.On("Update", stubSession).Return(&stubSession, nil)
 
-		_, err = service.RenewSession(session.SessionID, "new-jwt-token", "new-refresh-token", newExpiresAt)
+		savedSession, err := service.RenewSession(session.SessionID, "new-jwt-token", "new-refresh-token", newExpiresAt)
 		assert.NoError(t, err)
+		assert.Equal(t, stubSession.JWTToken(), savedSession.JWTToken())
+		assert.Equal(t, stubSession.RenewToken(), savedSession.RenewToken())
+
 	})
 
 	t.Run("renew session - session not found", func(t *testing.T) {
@@ -413,7 +416,7 @@ func (m *mockLoginRepository) Save(inputLogin login.Login) error {
 	return args.Error(1)
 }
 
-func (m *mockLoginRepository) FindLoginByUserID(userID valueobjects.UserID) (*login.Login, error) {
+func (m *mockLoginRepository) FindLoginByUserId(userID valueobjects.UserID) (*login.Login, error) {
 	args := m.Called(userID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)

@@ -24,7 +24,7 @@ I believe this approach will help me face some problems, like authentication, co
 
 ### Auth Server
 
-**Status:** _in progress_
+**Status:** _finished for now_
 
 **Features Available:**
 
@@ -36,15 +36,16 @@ I believe this approach will help me face some problems, like authentication, co
 **To Do List:**
 
 - [x] Create basic structure
+- [ ] Improve logs and error handling
 - [ ] Change database mocks to "faker"approach and improve unit tests consistency
 - [ ] Improve renew token business logic
-- [ ] Create an Auth Middleware to protect /revoke and /renew endpoints
+- [x] Create an Auth Middleware to protect /revoke and /renew endpoints
 - [ ] Write tests to app services and route
 - [ ] Write tests to infra layer components
 
 ### Player
 
-**Status:** _backlog_
+**Status:** _in progress_
 
 **Features Available:**
 

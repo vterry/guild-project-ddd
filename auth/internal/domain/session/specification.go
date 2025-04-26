@@ -15,7 +15,7 @@ var (
 	ErrEmptyRenewToken    = errors.New("renew token cannot be empty")
 	ErrEmptyCRSF          = errors.New("csrf token cannot be empty")
 	ErrEmptyExpirionTime  = errors.New("expires at cannot be empty")
-	ErrExpiresAtInThePast = errors.New("expires at cannot be in the past")
+	ErrExpiresAtInThePast = errors.New("session cannot be expired")
 )
 
 type SessionParams struct {

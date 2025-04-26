@@ -31,14 +31,14 @@ func WriteError(w http.ResponseWriter, status int, err error) {
 	WriteJSON(w, status, map[string]string{"error": err.Error()})
 }
 
-func RecoverSessionId(r *http.Request) (string, error) {
-	if sessionID := r.Header.Get("session_id"); sessionID != "" {
-		return sessionID, nil
+func RecoverSessionId(r *http.Request) string {
+	if reqSessionId := r.Header.Get("session_id"); reqSessionId != "" {
+		return reqSessionId
 	}
 
 	cookie, err := r.Cookie("session_id")
 	if err != nil {
-		return "", ErrSessionIDNotInformed
+		return cookie.Value
 	}
-	return cookie.Value, nil
+	return ""
 }

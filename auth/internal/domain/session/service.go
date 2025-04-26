@@ -41,7 +41,7 @@ func NewSessionService(sessionRepo Repository, loginRepo login.Repository) Sessi
 }
 
 func (s *SessionServiceImpl) CreateNewSession(userId valueobjects.UserID, jwtToken JWTToken, renewToken JWTToken, csrfToken CSRFToken, expiresAt time.Time) (*Session, error) {
-	login, _ := s.loginRepository.FindLoginByUserID(userId)
+	login, _ := s.loginRepository.FindLoginByUserId(userId)
 	if login == nil {
 		return nil, ErrCannotCreateSessionWithoutLogin
 	}

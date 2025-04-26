@@ -61,24 +61,15 @@ func DAOtoSession(s Session) (session.Session, error) {
 		return session.Session{}, fmt.Errorf("error while parsing user id: %w", err)
 	}
 
-	sess, err := session.Create(
-		valueobjects.NewUserID(userId),
-		session.JWTToken(s.JwtToken),
-		session.JWTToken(s.RenewToken),
-		session.CSRFToken(s.CsrfToken),
-		s.ExpiresAt,
-	)
-	if err != nil {
-		return session.Session{}, fmt.Errorf("error while creating session from DAO: %w", err)
-	}
+	session := session.NewSessionBuilder().
+		WithSessionId(session.NewSessionID(sessionId)).
+		WithUserId(valueobjects.NewUserID(userId)).
+		WithJWTToken(session.JWTToken(s.JwtToken)).
+		WithRenewToken(session.JWTToken(s.RenewToken)).
+		WithCSRFToken(session.CSRFToken(s.CsrfToken)).
+		WithExpirationAt(s.ExpiresAt).
+		WithRevokeStatus(s.Revoked).
+		Build()
 
-	// Set the session ID and revoked status
-	sess.SessionID = session.NewSessionID(sessionId)
-	if s.Revoked {
-		if err := sess.Revoke(); err != nil {
-			return session.Session{}, fmt.Errorf("error while setting revoked status: %w", err)
-		}
-	}
-
-	return *sess, nil
+	return session, nil
 }
