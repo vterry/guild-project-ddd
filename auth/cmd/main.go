@@ -32,7 +32,7 @@ func main() {
 
 	dbClient, err := initStorage(connectCtx, mongoOptions)
 	if err != nil {
-		log.Fatalf("Failed to initialize MongoDB storage: %v", err)
+		log.Fatalf("failed to initialize MongoDB storage: %v", err)
 	}
 	defer disconnectMongoDB(dbClient, 5*time.Second)
 

@@ -24,24 +24,7 @@ I believe this approach will help me face some problems, like authentication, co
 
 ### Auth Server
 
-**Status:** _finished for now_
-
-**Features Available:**
-
-- Create a Login
-- Login
-- Renew Token and Session
-- Revoke session
-
-**To Do List:**
-
-- [x] Create basic structure
-- [ ] Improve logs and error handling
-- [ ] Change database mocks to "faker"approach and improve unit tests consistency
-- [ ] Improve renew token business logic
-- [x] Create an Auth Middleware to protect /revoke and /renew endpoints
-- [ ] Write tests to app services and route
-- [ ] Write tests to infra layer components
+**Status:** _deprecated -- using now keycloak :)_
 
 ### Player
 
@@ -55,7 +38,11 @@ I believe this approach will help me face some problems, like authentication, co
 
 **To Do List:**
 
-- [ ] Create basic structure
+- [x] Create basic structure
+- [ ] Create app layer
+- [ ] Create infra layer
+- [ ] Create domain events
+- [ ] Explore hexagonal architecture fundamentals
 
 ### Guild
 
