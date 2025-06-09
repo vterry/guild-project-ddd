@@ -8,9 +8,9 @@ import (
 	"github.com/vterry/ddd-study/character/internal/core/domain/common/base"
 	"github.com/vterry/ddd-study/character/internal/core/domain/common/class"
 	"github.com/vterry/ddd-study/character/internal/core/domain/common/guild"
+	"github.com/vterry/ddd-study/character/internal/core/domain/common/login"
 	"github.com/vterry/ddd-study/character/internal/core/domain/common/vault"
 	"github.com/vterry/ddd-study/character/internal/core/domain/inventory"
-	"github.com/vterry/ddd-study/character/internal/core/domain/login"
 	"github.com/vterry/ddd-study/character/internal/core/domain/playeritem"
 )
 
@@ -28,7 +28,7 @@ type CharacterID struct {
 
 type Character struct {
 	CharacterID
-	login     *login.Login // TODO - modify to work with Login ID
+	loginID   login.LoginID
 	nickname  string
 	class     class.Class
 	inventory inventory.Inventory
@@ -42,15 +42,15 @@ func NewCharacterID(value uuid.UUID) CharacterID {
 	}
 }
 
-func CreateNewCharacter(nickname string, login *login.Login, class class.Class, vaultId vault.VaultID) (*Character, error) {
+func CreateNewCharacter(nickname string, loginId login.LoginID, class class.Class, vaultId vault.VaultID) (*Character, error) {
 
-	if err := ValidateNewCharacter(nickname, login, class); err != nil {
+	if err := ValidateNewCharacter(nickname, loginId, class); err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrCreatePlayer, err)
 	}
 
 	player := &Character{
 		CharacterID: NewCharacterID(uuid.New()),
-		login:       login,
+		loginID:     loginId,
 		nickname:    nickname,
 		class:       class,
 		inventory:   *inventory.NewInventory(),

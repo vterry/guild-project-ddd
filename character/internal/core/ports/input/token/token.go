@@ -1,5 +1,7 @@
 package token
 
+import "context"
+
 type AuthService interface {
-	IsUserValid(userid string) bool
+	TokenValidation(ctx context.Context, token string) (bool, error)
 }

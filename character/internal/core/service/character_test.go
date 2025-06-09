@@ -10,8 +10,8 @@ import (
 	"github.com/vterry/ddd-study/character/internal/core/domain/character"
 	"github.com/vterry/ddd-study/character/internal/core/domain/common/class"
 	"github.com/vterry/ddd-study/character/internal/core/domain/common/item"
+	"github.com/vterry/ddd-study/character/internal/core/domain/common/login"
 	"github.com/vterry/ddd-study/character/internal/core/domain/common/vault"
-	"github.com/vterry/ddd-study/character/internal/core/domain/login"
 	"github.com/vterry/ddd-study/character/internal/core/domain/playeritem"
 )
 
@@ -49,10 +49,11 @@ func (m *MockCharacterRepository) Update(character character.Character) error {
 }
 
 func TestCreateCharacter(t *testing.T) {
+	validLogin := login.NewLoginID(uuid.New())
+
 	tests := []struct {
 		name       string
-		userId     string
-		email      string
+		loginID    login.LoginID
 		nickname   string
 		class      class.Class
 		setupMocks func(*MockVaultService, *MockCharacterRepository)
@@ -60,8 +61,7 @@ func TestCreateCharacter(t *testing.T) {
 	}{
 		{
 			name:     "successful character creation",
-			userId:   "user123",
-			email:    "test@example.com",
+			loginID:  validLogin,
 			nickname: "TestChar",
 			class:    class.Warrior,
 			setupMocks: func(vs *MockVaultService, cr *MockCharacterRepository) {
@@ -71,20 +71,20 @@ func TestCreateCharacter(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name:     "invalid email",
-			userId:   "user123",
-			email:    "invalid-email",
+			name:     "invalid login id",
+			loginID:  login.LoginID{},
 			nickname: "TestChar",
 			class:    class.Warrior,
 			setupMocks: func(vs *MockVaultService, cr *MockCharacterRepository) {
-				// No mock setup needed as it should fail before reaching the mocks
+				// Even though we expect validation to fail, we should still set up the mock
+				// in case the validation changes in the future
+				vs.On("CreateVault").Return(vault.NewVaultID(uuid.New()), nil)
 			},
 			wantErr: true,
 		},
 		{
 			name:     "vault creation failure",
-			userId:   "user123",
-			email:    "test@example.com",
+			loginID:  validLogin,
 			nickname: "TestChar",
 			class:    class.Warrior,
 			setupMocks: func(vs *MockVaultService, cr *MockCharacterRepository) {
@@ -101,7 +101,7 @@ func TestCreateCharacter(t *testing.T) {
 			tt.setupMocks(mockVaultService, mockRepo)
 
 			service := NewCharacterService(mockRepo, mockVaultService)
-			err := service.CreateCharacter(tt.userId, tt.email, tt.nickname, tt.class)
+			err := service.CreateCharacter(tt.loginID, tt.nickname, tt.class)
 
 			if tt.wantErr {
 				assert.Error(t, err)
@@ -129,8 +129,8 @@ func TestTransferItemTo(t *testing.T) {
 		{
 			name: "successful item transfer",
 			setupMocks: func(cr *MockCharacterRepository) {
-				login, _ := login.NewLogin("user123", "test@example.com")
-				character, _ := character.CreateNewCharacter("TestChar", login, class.Warrior, vaultID)
+				loginID := login.NewLoginID(uuid.New())
+				character, _ := character.CreateNewCharacter("TestChar", loginID, class.Warrior, vaultID)
 				// Add item to character's inventory
 				_ = character.PickItem(*testItem)
 				cr.On("FindCharacterById", characterID).Return(character, nil)
@@ -148,8 +148,8 @@ func TestTransferItemTo(t *testing.T) {
 		{
 			name: "wrong vault",
 			setupMocks: func(cr *MockCharacterRepository) {
-				login, _ := login.NewLogin("user123", "test@example.com")
-				character, _ := character.CreateNewCharacter("TestChar", login, class.Warrior, vault.NewVaultID(uuid.New()))
+				loginID := login.NewLoginID(uuid.New())
+				character, _ := character.CreateNewCharacter("TestChar", loginID, class.Warrior, vault.NewVaultID(uuid.New()))
 				cr.On("FindCharacterById", characterID).Return(character, nil)
 			},
 			wantErr: true,
@@ -157,8 +157,8 @@ func TestTransferItemTo(t *testing.T) {
 		{
 			name: "failed item drop",
 			setupMocks: func(cr *MockCharacterRepository) {
-				login, _ := login.NewLogin("user123", "test@example.com")
-				character, _ := character.CreateNewCharacter("TestChar", login, class.Warrior, vaultID)
+				loginID := login.NewLoginID(uuid.New())
+				character, _ := character.CreateNewCharacter("TestChar", loginID, class.Warrior, vaultID)
 				// Don't add item to inventory, so drop will fail
 				cr.On("FindCharacterById", characterID).Return(character, nil)
 			},
@@ -167,8 +167,8 @@ func TestTransferItemTo(t *testing.T) {
 		{
 			name: "failed character update",
 			setupMocks: func(cr *MockCharacterRepository) {
-				login, _ := login.NewLogin("user123", "test@example.com")
-				character, _ := character.CreateNewCharacter("TestChar", login, class.Warrior, vaultID)
+				loginID := login.NewLoginID(uuid.New())
+				character, _ := character.CreateNewCharacter("TestChar", loginID, class.Warrior, vaultID)
 				_ = character.PickItem(*testItem)
 				cr.On("FindCharacterById", characterID).Return(character, nil)
 				cr.On("Update", mock.AnythingOfType("Character")).Return(assert.AnError)
@@ -210,9 +210,9 @@ func TestTradeItem(t *testing.T) {
 		{
 			name: "successful trade",
 			setupMocks: func(cr *MockCharacterRepository) {
-				login, _ := login.NewLogin("user123", "test@example.com")
-				originChar, _ := character.CreateNewCharacter("OriginChar", login, class.Warrior, vault.NewVaultID(uuid.New()))
-				destinyChar, _ := character.CreateNewCharacter("DestinyChar", login, class.Warrior, vault.NewVaultID(uuid.New()))
+				loginID := login.NewLoginID(uuid.New())
+				originChar, _ := character.CreateNewCharacter("OriginChar", loginID, class.Warrior, vault.NewVaultID(uuid.New()))
+				destinyChar, _ := character.CreateNewCharacter("DestinyChar", loginID, class.Warrior, vault.NewVaultID(uuid.New()))
 				// Add item to origin character's inventory
 				_ = originChar.PickItem(*testItem)
 				cr.On("FindCharacterById", originID).Return(originChar, nil)
@@ -231,8 +231,8 @@ func TestTradeItem(t *testing.T) {
 		{
 			name: "destiny character not found",
 			setupMocks: func(cr *MockCharacterRepository) {
-				login, _ := login.NewLogin("user123", "test@example.com")
-				originChar, _ := character.CreateNewCharacter("OriginChar", login, class.Warrior, vault.NewVaultID(uuid.New()))
+				loginID := login.NewLoginID(uuid.New())
+				originChar, _ := character.CreateNewCharacter("OriginChar", loginID, class.Warrior, vault.NewVaultID(uuid.New()))
 				cr.On("FindCharacterById", originID).Return(originChar, nil)
 				cr.On("FindCharacterById", destinyID).Return(nil, assert.AnError)
 			},
@@ -241,9 +241,9 @@ func TestTradeItem(t *testing.T) {
 		{
 			name: "failed item drop from origin",
 			setupMocks: func(cr *MockCharacterRepository) {
-				login, _ := login.NewLogin("user123", "test@example.com")
-				originChar, _ := character.CreateNewCharacter("OriginChar", login, class.Warrior, vault.NewVaultID(uuid.New()))
-				destinyChar, _ := character.CreateNewCharacter("DestinyChar", login, class.Warrior, vault.NewVaultID(uuid.New()))
+				loginID := login.NewLoginID(uuid.New())
+				originChar, _ := character.CreateNewCharacter("OriginChar", loginID, class.Warrior, vault.NewVaultID(uuid.New()))
+				destinyChar, _ := character.CreateNewCharacter("DestinyChar", loginID, class.Warrior, vault.NewVaultID(uuid.New()))
 				// Don't add item to origin character's inventory
 				cr.On("FindCharacterById", originID).Return(originChar, nil)
 				cr.On("FindCharacterById", destinyID).Return(destinyChar, nil)
@@ -253,9 +253,9 @@ func TestTradeItem(t *testing.T) {
 		{
 			name: "failed item pick with destiny",
 			setupMocks: func(cr *MockCharacterRepository) {
-				login, _ := login.NewLogin("user123", "test@example.com")
-				originChar, _ := character.CreateNewCharacter("OriginChar", login, class.Warrior, vault.NewVaultID(uuid.New()))
-				destinyChar, _ := character.CreateNewCharacter("DestinyChar", login, class.Warrior, vault.NewVaultID(uuid.New()))
+				loginID := login.NewLoginID(uuid.New())
+				originChar, _ := character.CreateNewCharacter("OriginChar", loginID, class.Warrior, vault.NewVaultID(uuid.New()))
+				destinyChar, _ := character.CreateNewCharacter("DestinyChar", loginID, class.Warrior, vault.NewVaultID(uuid.New()))
 				// Fill destiny character's inventory
 				for i := 0; i < 10; i++ {
 					item, _ := playeritem.NewPlayerItem(item.NewItemID(uuid.New()), fmt.Sprintf("Item%d", i), 1)
@@ -270,9 +270,9 @@ func TestTradeItem(t *testing.T) {
 		{
 			name: "failed origin character update",
 			setupMocks: func(cr *MockCharacterRepository) {
-				login, _ := login.NewLogin("user123", "test@example.com")
-				originChar, _ := character.CreateNewCharacter("OriginChar", login, class.Warrior, vault.NewVaultID(uuid.New()))
-				destinyChar, _ := character.CreateNewCharacter("DestinyChar", login, class.Warrior, vault.NewVaultID(uuid.New()))
+				loginID := login.NewLoginID(uuid.New())
+				originChar, _ := character.CreateNewCharacter("OriginChar", loginID, class.Warrior, vault.NewVaultID(uuid.New()))
+				destinyChar, _ := character.CreateNewCharacter("DestinyChar", loginID, class.Warrior, vault.NewVaultID(uuid.New()))
 				_ = originChar.PickItem(*testItem)
 				cr.On("FindCharacterById", originID).Return(originChar, nil)
 				cr.On("FindCharacterById", destinyID).Return(destinyChar, nil)
@@ -283,9 +283,9 @@ func TestTradeItem(t *testing.T) {
 		{
 			name: "failed destiny character update",
 			setupMocks: func(cr *MockCharacterRepository) {
-				login, _ := login.NewLogin("user123", "test@example.com")
-				originChar, _ := character.CreateNewCharacter("OriginChar", login, class.Warrior, vault.NewVaultID(uuid.New()))
-				destinyChar, _ := character.CreateNewCharacter("DestinyChar", login, class.Warrior, vault.NewVaultID(uuid.New()))
+				loginID := login.NewLoginID(uuid.New())
+				originChar, _ := character.CreateNewCharacter("OriginChar", loginID, class.Warrior, vault.NewVaultID(uuid.New()))
+				destinyChar, _ := character.CreateNewCharacter("DestinyChar", loginID, class.Warrior, vault.NewVaultID(uuid.New()))
 				_ = originChar.PickItem(*testItem)
 				cr.On("FindCharacterById", originID).Return(originChar, nil)
 				cr.On("FindCharacterById", destinyID).Return(destinyChar, nil)
@@ -329,8 +329,8 @@ func TestDepositGold(t *testing.T) {
 			name:     "successful gold deposit",
 			quantity: 100,
 			setupMocks: func(cr *MockCharacterRepository) {
-				login, _ := login.NewLogin("user123", "test@example.com")
-				character, _ := character.CreateNewCharacter("TestChar", login, class.Warrior, vaultID)
+				loginID := login.NewLoginID(uuid.New())
+				character, _ := character.CreateNewCharacter("TestChar", loginID, class.Warrior, vaultID)
 				// Add gold to character's inventory
 				err := character.PickGold(200) // Add more than we want to deposit
 				assert.NoError(t, err)
@@ -351,8 +351,8 @@ func TestDepositGold(t *testing.T) {
 			name:     "wrong vault",
 			quantity: 100,
 			setupMocks: func(cr *MockCharacterRepository) {
-				login, _ := login.NewLogin("user123", "test@example.com")
-				character, _ := character.CreateNewCharacter("TestChar", login, class.Warrior, vault.NewVaultID(uuid.New()))
+				loginID := login.NewLoginID(uuid.New())
+				character, _ := character.CreateNewCharacter("TestChar", loginID, class.Warrior, vault.NewVaultID(uuid.New()))
 				cr.On("FindCharacterById", characterID).Return(character, nil)
 			},
 			wantErr: true,
@@ -361,8 +361,8 @@ func TestDepositGold(t *testing.T) {
 			name:     "failed gold withdrawal",
 			quantity: 100,
 			setupMocks: func(cr *MockCharacterRepository) {
-				login, _ := login.NewLogin("user123", "test@example.com")
-				character, _ := character.CreateNewCharacter("TestChar", login, class.Warrior, vaultID)
+				loginID := login.NewLoginID(uuid.New())
+				character, _ := character.CreateNewCharacter("TestChar", loginID, class.Warrior, vaultID)
 				// Don't add any gold to character's inventory
 				cr.On("FindCharacterById", characterID).Return(character, nil)
 			},
@@ -372,8 +372,8 @@ func TestDepositGold(t *testing.T) {
 			name:     "failed character update",
 			quantity: 100,
 			setupMocks: func(cr *MockCharacterRepository) {
-				login, _ := login.NewLogin("user123", "test@example.com")
-				character, _ := character.CreateNewCharacter("TestChar", login, class.Warrior, vaultID)
+				loginID := login.NewLoginID(uuid.New())
+				character, _ := character.CreateNewCharacter("TestChar", loginID, class.Warrior, vaultID)
 				err := character.PickGold(200)
 				assert.NoError(t, err)
 				cr.On("FindCharacterById", characterID).Return(character, nil)
@@ -413,8 +413,8 @@ func TestLeaveGuild(t *testing.T) {
 		{
 			name: "successful guild leave",
 			setupMocks: func(cr *MockCharacterRepository) {
-				login, _ := login.NewLogin("user123", "test@example.com")
-				character, _ := character.CreateNewCharacter("TestChar", login, class.Warrior, vault.NewVaultID(uuid.New()))
+				loginID := login.NewLoginID(uuid.New())
+				character, _ := character.CreateNewCharacter("TestChar", loginID, class.Warrior, vault.NewVaultID(uuid.New()))
 				cr.On("FindCharacterById", characterID).Return(character, nil)
 				cr.On("Update", mock.AnythingOfType("Character")).Return(nil)
 			},

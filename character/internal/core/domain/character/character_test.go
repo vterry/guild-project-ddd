@@ -9,15 +9,14 @@ import (
 	"github.com/vterry/ddd-study/character/internal/core/domain/common/class"
 	"github.com/vterry/ddd-study/character/internal/core/domain/common/guild"
 	"github.com/vterry/ddd-study/character/internal/core/domain/common/item"
+	"github.com/vterry/ddd-study/character/internal/core/domain/common/login"
 	"github.com/vterry/ddd-study/character/internal/core/domain/common/vault"
-	"github.com/vterry/ddd-study/character/internal/core/domain/login"
 	"github.com/vterry/ddd-study/character/internal/core/domain/playeritem"
 )
 
 // setupTestCharacter creates a new character for testing
 func setupTestCharacter(t *testing.T) *Character {
-	validLogin, err := login.NewLogin("user123", "test@example.com")
-	assert.NoError(t, err)
+	validLogin := login.NewLoginID(uuid.New())
 
 	character, err := CreateNewCharacter("TestPlayer", validLogin, class.Warrior, vault.NewVaultID(uuid.New()))
 	assert.NoError(t, err)
@@ -37,12 +36,12 @@ func setupTestItem(t *testing.T, name string) *playeritem.PlayerItem {
 }
 
 func TestCreateNewCharacter(t *testing.T) {
-	validLogin, _ := login.NewLogin("user123", "test@example.com")
+	validLogin := login.NewLoginID(uuid.New())
 
 	tests := []struct {
 		name      string
 		nickname  string
-		login     *login.Login
+		loginId   login.LoginID
 		class     class.Class
 		vaultId   vault.VaultID
 		wantErr   bool
@@ -51,7 +50,7 @@ func TestCreateNewCharacter(t *testing.T) {
 		{
 			name:     "successful character creation",
 			nickname: "TestPlayer",
-			login:    validLogin,
+			loginId:  validLogin,
 			class:    class.Warrior,
 			vaultId:  vault.NewVaultID(uuid.New()),
 			wantErr:  false,
@@ -59,7 +58,7 @@ func TestCreateNewCharacter(t *testing.T) {
 		{
 			name:      "empty nickname",
 			nickname:  "",
-			login:     validLogin,
+			loginId:   validLogin,
 			class:     class.Warrior,
 			vaultId:   vault.NewVaultID(uuid.New()),
 			wantErr:   true,
@@ -68,7 +67,7 @@ func TestCreateNewCharacter(t *testing.T) {
 		{
 			name:      "nil login",
 			nickname:  "TestPlayer",
-			login:     nil,
+			loginId:   login.LoginID{},
 			class:     class.Warrior,
 			vaultId:   vault.NewVaultID(uuid.New()),
 			wantErr:   true,
@@ -78,7 +77,7 @@ func TestCreateNewCharacter(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			character, err := CreateNewCharacter(tt.nickname, tt.login, tt.class, tt.vaultId)
+			character, err := CreateNewCharacter(tt.nickname, tt.loginId, tt.class, tt.vaultId)
 			if tt.wantErr {
 				assert.Error(t, err)
 				assert.Contains(t, err.Error(), tt.errString)
@@ -192,7 +191,7 @@ func TestCharacterInventoryOperations(t *testing.T) {
 
 func TestCharacterVaultOperations(t *testing.T) {
 	vaultId := vault.NewVaultID(uuid.New())
-	validLogin, _ := login.NewLogin("user123", "test@example.com")
+	validLogin := login.NewLoginID(uuid.New())
 	character, _ := CreateNewCharacter("TestPlayer", validLogin, class.Warrior, vaultId)
 
 	t.Run("get vault id", func(t *testing.T) {

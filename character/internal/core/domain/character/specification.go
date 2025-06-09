@@ -6,10 +6,10 @@ import (
 
 	"github.com/vterry/ddd-study/character/internal/core/domain/common/class"
 	"github.com/vterry/ddd-study/character/internal/core/domain/common/guild"
+	"github.com/vterry/ddd-study/character/internal/core/domain/common/login"
 	"github.com/vterry/ddd-study/character/internal/core/domain/common/specifications"
 	"github.com/vterry/ddd-study/character/internal/core/domain/common/vault"
 	"github.com/vterry/ddd-study/character/internal/core/domain/inventory"
-	"github.com/vterry/ddd-study/character/internal/core/domain/login"
 )
 
 var (
@@ -22,7 +22,7 @@ var (
 
 type CharacterParams struct {
 	characterID CharacterID
-	login       *login.Login
+	loginID     login.LoginID
 	nickname    string
 	class       class.Class
 	inventory   inventory.Inventory
@@ -33,7 +33,7 @@ type CharacterParams struct {
 func NewCharacterParams(character *Character) *CharacterParams {
 	return &CharacterParams{
 		characterID: character.CharacterID,
-		login:       character.login,
+		loginID:     character.loginID,
 		nickname:    character.nickname,
 		class:       character.class,
 		inventory:   character.inventory,
@@ -42,10 +42,10 @@ func NewCharacterParams(character *Character) *CharacterParams {
 	}
 }
 
-func ValidateNewCharacter(nickname string, login *login.Login, class class.Class) error {
+func ValidateNewCharacter(nickname string, loginID login.LoginID, class class.Class) error {
 	params := CharacterParams{
 		nickname: nickname,
-		login:    login,
+		loginID:  loginID,
 		class:    class,
 	}
 
@@ -91,7 +91,7 @@ func CharacterIDNotEmptySpec() specifications.Specification[CharacterParams] {
 
 func LoginNotEmptySpec() specifications.Specification[CharacterParams] {
 	return func(b specifications.Base[CharacterParams]) error {
-		if b.Entity.login == nil {
+		if b.Entity.loginID == (login.LoginID{}) {
 			return ErrInvalidLoginId
 		}
 		return nil

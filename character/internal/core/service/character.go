@@ -8,8 +8,8 @@ import (
 	"github.com/vterry/ddd-study/character/internal/core/domain/character"
 	"github.com/vterry/ddd-study/character/internal/core/domain/common/class"
 	"github.com/vterry/ddd-study/character/internal/core/domain/common/guild"
+	"github.com/vterry/ddd-study/character/internal/core/domain/common/login"
 	"github.com/vterry/ddd-study/character/internal/core/domain/common/vault"
-	"github.com/vterry/ddd-study/character/internal/core/domain/login"
 	"github.com/vterry/ddd-study/character/internal/core/domain/playeritem"
 	"github.com/vterry/ddd-study/character/internal/core/ports/input/service"
 	"github.com/vterry/ddd-study/character/internal/core/ports/output/gateway"
@@ -32,23 +32,18 @@ func NewCharacterService(characterRepository repository.CharacterRepository, vau
 	}
 }
 
-func (s *CharacterServiceImpl) CreateCharacter(userId string, email string, nickname string, class class.Class) error {
-
-	// TODO - Remove this, it is not consern od Character handle login problems
-	login, err := login.NewLogin(userId, email)
-	if err != nil {
-		return fmt.Errorf("%w: %v", ErrWhileCreation, err)
-	}
+func (s *CharacterServiceImpl) CreateCharacter(loginId login.LoginID, nickname string, class class.Class) error {
 
 	vaultId, err := s.vaultGateway.CreateVault()
 	if err != nil {
 		return fmt.Errorf("%w: %v", ErrWhileCreation, err)
 	}
 
-	character, err := character.CreateNewCharacter(nickname, login, class, vaultId)
+	character, err := character.CreateNewCharacter(nickname, loginId, class, vaultId)
 	if err != nil {
 		return fmt.Errorf("%w: %v", ErrWhileCreation, err)
 	}
+
 	return s.characterRepository.Save(*character)
 }
 
