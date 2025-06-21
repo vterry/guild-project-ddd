@@ -1,4 +1,4 @@
-package gateway
+package dto
 
 import (
 	"encoding/json"
@@ -34,8 +34,8 @@ func (t *Timestamp) UnmarshalJSON(data []byte) error {
 }
 
 func (t Timestamp) MarshalJSON() ([]byte, error) {
-	if t.Time.IsZero() {
+	if t.IsZero() {
 		return []byte("null"), nil
 	}
-	return json.Marshal(t.Time.UnixMilli())
+	return json.Marshal(t.UnixMilli())
 }

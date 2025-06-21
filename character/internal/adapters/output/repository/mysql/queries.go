@@ -1,0 +1,6 @@
+package mysql
+
+var (
+	CreateNewInventoryQuery = "INSERT INTO INVENTORIES (INVENTORY_ID, GOLD_AMOUNT) VALUES (?, ?)"
+	CreateNewCharacterQuery = "INSERT INTO CHARACTERS (CHARACTER_ID, LOGIN_ID, NICKNAME, CLASS, INVENTORY_ID, GUILD_ID, VAULT_ID) VALUES (?, ?, ?, ?, ?, ?, ?)"
+)

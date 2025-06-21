@@ -37,8 +37,11 @@ func (h *Handler) handleCreateLogin(w http.ResponseWriter, r *http.Request) {
 
 	if err := h.svc.NewCharacter(r.Context(), payload.UserID, payload.Nickname, payload.Class); err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, fmt.Errorf("invalid payload %v", err))
+		return
 	}
 
-	utils.WriteJSON(w, http.StatusOK, "character created")
+	if err := utils.WriteJSON(w, http.StatusOK, "character created"); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
 
 }

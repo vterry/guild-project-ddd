@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/coreos/go-oidc/v3/oidc"
-	"github.com/vterry/ddd-study/character/internal/adapters/input/keycloak"
+	"github.com/vterry/ddd-study/character/internal/infra/keycloak"
 )
 
 type TokenValidationAdapter struct {

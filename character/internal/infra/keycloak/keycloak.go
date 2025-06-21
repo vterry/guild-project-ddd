@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/coreos/go-oidc/v3/oidc"
-	"github.com/vterry/ddd-study/character/internal/config"
+	"github.com/vterry/ddd-study/character/internal/infra/config"
 	"golang.org/x/oauth2"
 )
 
@@ -43,6 +43,7 @@ func NewKeycloakClient(ctx context.Context, config *config.KeycloakConfig, optio
 		Oauth:    oauth2,
 		OIDC:     verifier,
 		Provider: provider,
+		config:   config,
 	}, nil
 }
 

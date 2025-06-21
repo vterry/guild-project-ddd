@@ -53,9 +53,9 @@ func (h *CharacterService) NewCharacter(ctx context.Context, loginId string, nic
 		return fmt.Errorf("%v: %w", ErrCannotCreateCharacter, err)
 	}
 
-	if err := h.charaterService.CreateCharacter(loginID, nickname, classValue); err != nil {
+	if err := h.charaterService.CreateCharacter(ctx, loginID, nickname, classValue); err != nil {
 		return fmt.Errorf("%v: %w", ErrCannotCreateCharacter, err)
 	}
 
-	return err
+	return nil
 }

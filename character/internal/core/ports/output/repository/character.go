@@ -1,9 +1,13 @@
 package repository
 
-import "github.com/vterry/ddd-study/character/internal/core/domain/character"
+import (
+	"context"
+
+	"github.com/vterry/ddd-study/character/internal/core/domain/character"
+)
 
 type CharacterRepository interface {
-	Save(character.Character) error
-	FindCharacterById(character.CharacterID) (*character.Character, error)
-	Update(character.Character) error
+	FindCharacterById(ctx context.Context, characterId character.CharacterID) (*character.Character, error)
+	Save(ctx context.Context, character character.Character) error
+	Update(ctx context.Context, character character.Character) error
 }

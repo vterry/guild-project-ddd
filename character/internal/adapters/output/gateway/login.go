@@ -9,8 +9,9 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/vterry/ddd-study/character/internal/adapters/input/keycloak"
+	"github.com/vterry/ddd-study/character/internal/adapters/output/gateway/dto"
 	"github.com/vterry/ddd-study/character/internal/core/domain/common/login"
+	"github.com/vterry/ddd-study/character/internal/infra/keycloak"
 )
 
 type LoginGateway struct {
@@ -46,14 +47,15 @@ func (l *LoginGateway) IsLoginValid(ctx context.Context, loginId login.LoginID) 
 	if err != nil {
 		return false, fmt.Errorf("failed to get user info: %w", err)
 	}
-	defer resp.Body.Close()
+
+	defer closeBodyWithError(resp.Body)
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
 		return false, fmt.Errorf("failed to get user info: status code %d, body: %s", resp.StatusCode, string(body))
 	}
 
-	var user Login
+	var user dto.Login
 	if err := json.NewDecoder(resp.Body).Decode(&user); err != nil {
 		return false, fmt.Errorf("failed to decode user info: %w", err)
 	}
@@ -85,7 +87,8 @@ func (l *LoginGateway) getAdminToken(ctx context.Context) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to get admin token: %w", err)
 	}
-	defer resp.Body.Close()
+
+	defer closeBodyWithError(resp.Body)
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
@@ -101,4 +104,13 @@ func (l *LoginGateway) getAdminToken(ctx context.Context) (string, error) {
 	}
 
 	return tokenResp.AccessToken, nil
+}
+
+func closeBodyWithError(body io.ReadCloser) {
+	if body == nil {
+		return
+	}
+	if err := body.Close(); err != nil {
+		fmt.Printf("error closing response body: %v\n", err)
+	}
 }

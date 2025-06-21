@@ -8,7 +8,7 @@ import (
 )
 
 type Config struct {
-	Port string
+	Addr string
 	Db   DbConfig
 	Auth KeycloakConfig
 }
@@ -30,19 +30,23 @@ type KeycloakConfig struct {
 var Envs = initConfig()
 
 func initConfig() Config {
-	godotenv.Load()
+
+	if err := godotenv.Load(); err != nil {
+		fmt.Printf("Warning: .env file not found: %v\n", err)
+	}
+
 	return Config{
-		Port: getEnv("APP_PORT", "8080"),
+		Addr: getEnv("APP_ADDR", ":8080"),
 		Db: DbConfig{
-			User:     getEnv("DB_USER", "root"),
-			Password: getEnv("DB_PASSWORD", "password"),
+			User:     getEnv("DB_USER", "character"),
+			Password: getEnv("DB_PASSWORD", "characterPW"),
 			Address:  fmt.Sprintf("%s:%s", getEnv("DB_HOST", "127.0.0.1"), getEnv("DB_PORT", "3306")),
 			Name:     getEnv("DB_NAME", "character-db"),
 		},
 		Auth: KeycloakConfig{
 			BaseURL:      getEnv("AUTH_BASE_URL", "http://localhost:7080"),
 			ClientID:     getEnv("AUTH_CLIENT_ID", "playground"),
-			ClientSecret: getEnv("AUTH_CLIENT_SECRET", "bsseWxYIokXVvfgQe0PU6dkXy24Hj4no"),
+			ClientSecret: getEnv("AUTH_CLIENT_SECRET", "PAfdvjPnUDFyTqm5fBuqjHxiAJCGQLVu"),
 			Realm:        getEnv("AUTH_REALM", "playground"),
 		},
 	}

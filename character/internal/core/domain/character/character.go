@@ -61,6 +61,22 @@ func CreateNewCharacter(nickname string, loginId login.LoginID, class class.Clas
 	return player, nil
 }
 
+func (c *Character) LoginID() login.LoginID {
+	return c.loginID
+}
+
+func (c *Character) Nickname() string {
+	return c.nickname
+}
+
+func (c *Character) Class() class.Class {
+	return c.class
+}
+
+func (c *Character) Inventory() inventory.Inventory {
+	return c.inventory
+}
+
 func (c *Character) GetCurrentGuild() guild.GuildID {
 	return c.guild
 }

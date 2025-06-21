@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
@@ -32,7 +33,7 @@ func NewCharacterService(characterRepository repository.CharacterRepository, vau
 	}
 }
 
-func (s *CharacterServiceImpl) CreateCharacter(loginId login.LoginID, nickname string, class class.Class) error {
+func (s *CharacterServiceImpl) CreateCharacter(ctx context.Context, loginId login.LoginID, nickname string, class class.Class) error {
 
 	vaultId, err := s.vaultGateway.CreateVault()
 	if err != nil {
@@ -44,11 +45,11 @@ func (s *CharacterServiceImpl) CreateCharacter(loginId login.LoginID, nickname s
 		return fmt.Errorf("%w: %v", ErrWhileCreation, err)
 	}
 
-	return s.characterRepository.Save(*character)
+	return s.characterRepository.Save(ctx, *character)
 }
 
-func (s *CharacterServiceImpl) TransferItemTo(characterId character.CharacterID, playeritem playeritem.PlayerItem, quantity int, vaultId vault.VaultID) error {
-	character, err := s.characterRepository.FindCharacterById(characterId)
+func (s *CharacterServiceImpl) TransferItemTo(ctx context.Context, characterId character.CharacterID, playeritem playeritem.PlayerItem, quantity int, vaultId vault.VaultID) error {
+	character, err := s.characterRepository.FindCharacterById(ctx, characterId)
 	if err != nil {
 		return fmt.Errorf("failed to find character: %w", err)
 	}
@@ -64,22 +65,22 @@ func (s *CharacterServiceImpl) TransferItemTo(characterId character.CharacterID,
 	}
 
 	// Save the updated character state
-	if err := s.characterRepository.Update(*character); err != nil {
+	if err := s.characterRepository.Update(ctx, *character); err != nil {
 		return fmt.Errorf("failed to update character: %w", err)
 	}
 
 	return nil
 }
 
-func (s *CharacterServiceImpl) TradeItem(origin character.CharacterID, playeritem playeritem.PlayerItem, quantity int, destiny character.CharacterID) error {
+func (s *CharacterServiceImpl) TradeItem(ctx context.Context, origin character.CharacterID, playeritem playeritem.PlayerItem, quantity int, destiny character.CharacterID) error {
 	// Get origin character
-	originChar, err := s.characterRepository.FindCharacterById(origin)
+	originChar, err := s.characterRepository.FindCharacterById(ctx, origin)
 	if err != nil {
 		return fmt.Errorf("failed to find origin character: %w", err)
 	}
 
 	// Get destination character
-	destinyChar, err := s.characterRepository.FindCharacterById(destiny)
+	destinyChar, err := s.characterRepository.FindCharacterById(ctx, destiny)
 	if err != nil {
 		return fmt.Errorf("failed to find destination character: %w", err)
 	}
@@ -97,19 +98,19 @@ func (s *CharacterServiceImpl) TradeItem(origin character.CharacterID, playerite
 	}
 
 	// Save both characters' states
-	if err := s.characterRepository.Update(*originChar); err != nil {
+	if err := s.characterRepository.Update(ctx, *originChar); err != nil {
 		// Rollback: remove the item from destiny character
 		_ = destinyChar.DropItem(playeritem)
 		return fmt.Errorf("failed to update origin character: %w", err)
 	}
-	if err := s.characterRepository.Update(*destinyChar); err != nil {
+	if err := s.characterRepository.Update(ctx, *destinyChar); err != nil {
 		return fmt.Errorf("failed to update destination character: %w", err)
 	}
 	return nil
 }
 
-func (s *CharacterServiceImpl) DepositGold(characterId character.CharacterID, quantity int, vaultId vault.VaultID) error {
-	character, err := s.characterRepository.FindCharacterById(characterId)
+func (s *CharacterServiceImpl) DepositGold(ctx context.Context, characterId character.CharacterID, quantity int, vaultId vault.VaultID) error {
+	character, err := s.characterRepository.FindCharacterById(ctx, characterId)
 	if err != nil {
 		return fmt.Errorf("failed to find character: %w", err)
 	}
@@ -125,7 +126,7 @@ func (s *CharacterServiceImpl) DepositGold(characterId character.CharacterID, qu
 	}
 
 	// Save the updated character state
-	if err := s.characterRepository.Update(*character); err != nil {
+	if err := s.characterRepository.Update(ctx, *character); err != nil {
 		return fmt.Errorf("failed to update character: %w", err)
 	}
 
@@ -136,12 +137,12 @@ func (s *CharacterServiceImpl) PickItem() error {
 	return errors.New("method not implemented - requires character ID and item parameters")
 }
 
-func (s *CharacterServiceImpl) DropItem(playerItemID playeritem.PlayerItemID, quantity int) error {
+func (s *CharacterServiceImpl) DropItem(ctx context.Context, playerItemID playeritem.PlayerItemID, quantity int) error {
 	return errors.New("method not implemented - requires character ID parameter")
 }
 
-func (s *CharacterServiceImpl) LeaveGuild(characterID character.CharacterID) error {
-	character, err := s.characterRepository.FindCharacterById(characterID)
+func (s *CharacterServiceImpl) LeaveGuild(ctx context.Context, characterID character.CharacterID) error {
+	character, err := s.characterRepository.FindCharacterById(ctx, characterID)
 	if err != nil {
 		return fmt.Errorf("failed to find character: %w", err)
 	}
@@ -150,7 +151,7 @@ func (s *CharacterServiceImpl) LeaveGuild(characterID character.CharacterID) err
 	character.UpdateGuildInfo(guild.NewGuildID(uuid.Nil))
 
 	// Save the updated character state
-	if err := s.characterRepository.Update(*character); err != nil {
+	if err := s.characterRepository.Update(ctx, *character); err != nil {
 		return fmt.Errorf("failed to update character: %w", err)
 	}
 
