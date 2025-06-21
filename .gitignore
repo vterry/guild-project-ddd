@@ -17,6 +17,8 @@ _.so
 \*.test
 
 domain-deprecated/
+**/bin/
+.vscode/
 
 # Output of the go coverage tool, specifically when used with LiteIDE
 
