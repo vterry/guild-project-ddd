@@ -32,7 +32,7 @@ I believe this approach will help me face some problems, like authentication, co
 
 **Features Available:**
 
-- [] Create New Character
+- [x] Create New Character
 - [] Pick Items and Gold
 - [] Drop Items and Gold
 - [] Show inventory items
