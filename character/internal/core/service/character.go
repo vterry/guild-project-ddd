@@ -14,6 +14,7 @@ import (
 	"github.com/vterry/ddd-study/character/internal/core/domain/playeritem"
 	"github.com/vterry/ddd-study/character/internal/core/ports/input/service"
 	"github.com/vterry/ddd-study/character/internal/core/ports/output/gateway"
+	"github.com/vterry/ddd-study/character/internal/core/ports/output/logger"
 	"github.com/vterry/ddd-study/character/internal/core/ports/output/repository"
 )
 
@@ -24,28 +25,40 @@ var (
 type CharacterServiceImpl struct {
 	vaultGateway        gateway.Vault
 	characterRepository repository.CharacterRepository
+	logger              logger.Logger
 }
 
-func NewCharacterService(characterRepository repository.CharacterRepository, vaultGateway gateway.Vault) service.CharacterService {
+func NewCharacterService(characterRepository repository.CharacterRepository, vaultGateway gateway.Vault, logger logger.Logger) service.CharacterService {
 	return &CharacterServiceImpl{
 		vaultGateway:        vaultGateway,
 		characterRepository: characterRepository,
+		logger:              logger,
 	}
 }
 
 func (s *CharacterServiceImpl) CreateCharacter(ctx context.Context, loginId login.LoginID, nickname string, class class.Class) error {
+	s.logger.Info("Creating character", "loginId", loginId, "nickname", nickname, "class", class)
 
 	vaultId, err := s.vaultGateway.CreateVault()
 	if err != nil {
+		s.logger.Error("Failed to create vault", "error", err)
 		return fmt.Errorf("%w: %v", ErrWhileCreation, err)
 	}
 
 	character, err := character.CreateNewCharacter(nickname, loginId, class, vaultId)
 	if err != nil {
+		s.logger.Error("Failed to create character entity", "error", err)
 		return fmt.Errorf("%w: %v", ErrWhileCreation, err)
 	}
 
-	return s.characterRepository.Save(ctx, *character)
+	err = s.characterRepository.Save(ctx, *character)
+	if err != nil {
+		s.logger.Error("Failed to save character", "error", err)
+		return err
+	}
+
+	s.logger.Info("Character created successfully", "nickname", nickname)
+	return nil
 }
 
 func (s *CharacterServiceImpl) TransferItemTo(ctx context.Context, characterId character.CharacterID, playeritem playeritem.PlayerItem, quantity int, vaultId vault.VaultID) error {
@@ -72,40 +85,8 @@ func (s *CharacterServiceImpl) TransferItemTo(ctx context.Context, characterId c
 	return nil
 }
 
+// TODO - Need Trade system module
 func (s *CharacterServiceImpl) TradeItem(ctx context.Context, origin character.CharacterID, playeritem playeritem.PlayerItem, quantity int, destiny character.CharacterID) error {
-	// Get origin character
-	originChar, err := s.characterRepository.FindCharacterById(ctx, origin)
-	if err != nil {
-		return fmt.Errorf("failed to find origin character: %w", err)
-	}
-
-	// Get destination character
-	destinyChar, err := s.characterRepository.FindCharacterById(ctx, destiny)
-	if err != nil {
-		return fmt.Errorf("failed to find destination character: %w", err)
-	}
-
-	// Drop item from origin character
-	if err := originChar.DropItem(playeritem); err != nil {
-		return fmt.Errorf("failed to drop item from origin character: %w", err)
-	}
-
-	// Pick item with destination character
-	if err := destinyChar.PickItem(playeritem); err != nil {
-		// If picking fails, try to return the item to origin character
-		_ = originChar.PickItem(playeritem)
-		return fmt.Errorf("failed to pick item with destination character: %w", err)
-	}
-
-	// Save both characters' states
-	if err := s.characterRepository.Update(ctx, *originChar); err != nil {
-		// Rollback: remove the item from destiny character
-		_ = destinyChar.DropItem(playeritem)
-		return fmt.Errorf("failed to update origin character: %w", err)
-	}
-	if err := s.characterRepository.Update(ctx, *destinyChar); err != nil {
-		return fmt.Errorf("failed to update destination character: %w", err)
-	}
 	return nil
 }
 

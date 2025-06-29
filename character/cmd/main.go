@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"log"
 	"os"
 	"os/signal"
 	"syscall"
@@ -12,9 +11,13 @@ import (
 	"github.com/vterry/ddd-study/character/internal/infra/config"
 	"github.com/vterry/ddd-study/character/internal/infra/db"
 	server "github.com/vterry/ddd-study/character/internal/infra/http"
+	"github.com/vterry/ddd-study/character/internal/infra/logger"
 )
 
 func main() {
+	zapLogger := logger.NewZapLogger()
+	zapLogger.Info("Starting Character Service", "addr", config.Envs.Addr)
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -30,13 +33,14 @@ func main() {
 
 	dbConn, err := db.NewMySQLStorage(mysqlCfg)
 	if err != nil {
-		log.Fatalf("failed to connect to MySQL: %v", err)
+		zapLogger.Error("failed to connect to MySQL", "error", err)
+		os.Exit(1)
 	}
 	defer func() {
 		if err := dbConn.Close(); err != nil {
-			log.Printf("failed to close DB connection: %v", err)
+			zapLogger.Error("failed to close DB connection", "error", err)
 		} else {
-			log.Println("DB connection closed gracefully")
+			zapLogger.Info("DB connection closed gracefully")
 		}
 	}()
 
@@ -52,17 +56,17 @@ func main() {
 
 	select {
 	case err := <-serverErr:
-		log.Printf("HTTP server error: %v", err)
+		zapLogger.Error("HTTP server error", "error", err)
 	case sig := <-shutdownChan:
-		log.Printf("Received signal %v, shutting down gracefully...", sig)
+		zapLogger.Info("Received shutdown signal", "signal", sig)
 	}
 
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer shutdownCancel()
 
 	if err := httpServer.Stop(shutdownCtx); err != nil {
-		log.Printf("HTTP server shutdown error: %v", err)
+		zapLogger.Error("HTTP server shutdown error", "error", err)
 	} else {
-		log.Println("HTTP server shutdown gracefully")
+		zapLogger.Info("HTTP server shutdown gracefully")
 	}
 }

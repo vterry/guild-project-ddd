@@ -49,6 +49,16 @@ func (m *MockCharacterRepository) Update(ctx context.Context, character characte
 	return args.Error(0)
 }
 
+// MockLogger is a stub implementation of logger.Logger for tests
+// It does nothing
+
+type MockLogger struct{}
+
+func (m *MockLogger) Info(msg string, args ...interface{})  {}
+func (m *MockLogger) Warn(msg string, args ...interface{})  {}
+func (m *MockLogger) Error(msg string, args ...interface{}) {}
+func (m *MockLogger) Debug(msg string, args ...interface{}) {}
+
 func TestCreateCharacter(t *testing.T) {
 	validLogin := login.NewLoginID(uuid.New())
 
@@ -101,7 +111,7 @@ func TestCreateCharacter(t *testing.T) {
 			mockRepo := new(MockCharacterRepository)
 			tt.setupMocks(mockVaultService, mockRepo)
 
-			service := NewCharacterService(mockRepo, mockVaultService)
+			service := NewCharacterService(mockRepo, mockVaultService, &MockLogger{})
 			err := service.CreateCharacter(context.Background(), tt.loginID, tt.nickname, tt.class)
 
 			if tt.wantErr {
@@ -183,7 +193,7 @@ func TestTransferItemTo(t *testing.T) {
 			mockRepo := new(MockCharacterRepository)
 			tt.setupMocks(mockRepo)
 
-			service := NewCharacterService(mockRepo, nil)
+			service := NewCharacterService(mockRepo, nil, &MockLogger{})
 			err := service.TransferItemTo(context.Background(), characterID, *testItem, 1, vaultID)
 
 			if tt.wantErr {
@@ -302,7 +312,7 @@ func TestTradeItem(t *testing.T) {
 			mockRepo := new(MockCharacterRepository)
 			tt.setupMocks(mockRepo)
 
-			service := NewCharacterService(mockRepo, nil)
+			service := NewCharacterService(mockRepo, nil, &MockLogger{})
 			err := service.TradeItem(context.Background(), originID, *testItem, 1, destinyID)
 
 			if tt.wantErr {
@@ -389,7 +399,7 @@ func TestDepositGold(t *testing.T) {
 			mockRepo := new(MockCharacterRepository)
 			tt.setupMocks(mockRepo)
 
-			service := NewCharacterService(mockRepo, nil)
+			service := NewCharacterService(mockRepo, nil, &MockLogger{})
 			err := service.DepositGold(context.Background(), characterID, tt.quantity, vaultID)
 
 			if tt.wantErr {
@@ -435,7 +445,7 @@ func TestLeaveGuild(t *testing.T) {
 			mockRepo := new(MockCharacterRepository)
 			tt.setupMocks(mockRepo)
 
-			service := NewCharacterService(mockRepo, nil)
+			service := NewCharacterService(mockRepo, nil, &MockLogger{})
 			err := service.LeaveGuild(context.Background(), characterID)
 
 			if tt.wantErr {
@@ -450,7 +460,7 @@ func TestLeaveGuild(t *testing.T) {
 }
 
 func TestNotImplementedMethods(t *testing.T) {
-	service := NewCharacterService(nil, nil)
+	service := NewCharacterService(nil, nil, &MockLogger{})
 
 	t.Run("PickItem", func(t *testing.T) {
 		err := service.PickItem()

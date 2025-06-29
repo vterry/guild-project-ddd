@@ -5,21 +5,30 @@ import (
 	"net/http"
 
 	"github.com/go-playground/validator"
+	"github.com/vterry/ddd-study/character/internal/adapters/input/rest/middleware"
+	"github.com/vterry/ddd-study/character/internal/adapters/input/token"
 	"github.com/vterry/ddd-study/character/internal/utils"
 )
 
 type Handler struct {
-	svc CharacterService
+	svc          CharacterService
+	tokenAdapter token.TokenValidationAdapter
 }
 
-func NewHandler(svc CharacterService) *Handler {
+func NewHandler(svc CharacterService, tokenAdapter token.TokenValidationAdapter) *Handler {
 	return &Handler{
-		svc: svc,
+		svc:          svc,
+		tokenAdapter: tokenAdapter,
 	}
 }
 
 func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
-	mux.HandleFunc("POST /character", h.handleCreateLogin)
+	mux.Handle("POST /character", middleware.Chain(
+		http.HandlerFunc(h.handleCreateLogin),
+		middleware.LoggingMiddleware,
+		middleware.Auhtentication(h.tokenAdapter),
+	))
+
 }
 
 func (h *Handler) handleCreateLogin(w http.ResponseWriter, r *http.Request) {

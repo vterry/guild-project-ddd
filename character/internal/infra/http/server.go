@@ -6,11 +6,13 @@ import (
 	"net/http"
 
 	"github.com/vterry/ddd-study/character/internal/adapters/input/rest"
+	"github.com/vterry/ddd-study/character/internal/adapters/input/token"
 	"github.com/vterry/ddd-study/character/internal/adapters/output/gateway"
 	"github.com/vterry/ddd-study/character/internal/adapters/output/repository/mysql"
 	"github.com/vterry/ddd-study/character/internal/core/service"
 	"github.com/vterry/ddd-study/character/internal/infra/config"
 	"github.com/vterry/ddd-study/character/internal/infra/keycloak"
+	"github.com/vterry/ddd-study/character/internal/infra/logger"
 )
 
 type HttpServer struct {
@@ -41,11 +43,14 @@ func (h *HttpServer) Run() error {
 	loginGateway := gateway.NewLoginGateway(keycloakClient)
 	loginGateway.Client = &http.Client{}
 
-	characterCoreService := service.NewCharacterService(characterRepo, vaultGateway)
+	tokenAdapter := token.NewTokenValidator(keycloakClient)
+
+	zapLogger := logger.NewZapLogger()
+	characterCoreService := service.NewCharacterService(characterRepo, vaultGateway, zapLogger)
 
 	characterService := rest.NewCharacterService(characterCoreService, loginGateway)
 
-	handler := rest.NewHandler(*characterService)
+	handler := rest.NewHandler(*characterService, *tokenAdapter)
 
 	v1 := http.NewServeMux()
 	v1.Handle("/character/v1/", http.StripPrefix("/character/v1", v1))
